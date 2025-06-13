@@ -6,6 +6,22 @@ from db import guardar_en_sqlite,cargar_desde_sqlite,itinerarios_diferentes
 import serial
 import time
 
+def itinerarios_diferentes(locales, servidor):
+    if len(locales) != len(servidor):
+        return True
+    for i in range(len(servidor)):
+        loc = locales[i] if i < len(locales) else {}
+        serv = servidor[i]
+
+        if (
+            loc.get("recorrido", "").strip() != serv.get("recorrido", "").strip() or
+            loc.get("hora_despacho", "").strip() != serv.get("hora_despacho", "").strip() or
+            loc.get("hora_fin", "").strip() != serv.get("hora_fin", "").strip()
+        ):
+            return True
+    return False
+
+
 def obtener_datos_itinerario():
     url = f"https://www.ctucloja.com/despacho_display/bus/{BUS_ID}/itinerarios"
     fecha_raspberry = datetime.now().strftime("%d/%m/%Y")
@@ -84,7 +100,6 @@ def obtener_datos_itinerario():
                 send_to_nextion(hora_fin, f"t{39 + i}")
         else:
             print("⚠️ No hay datos válidos en SQLite.")
-
 
 def escuchar_itinerario(evento_itinerario):
 

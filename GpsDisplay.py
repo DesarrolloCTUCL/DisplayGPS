@@ -119,6 +119,7 @@ def verificar_itinerario_actual(fecha_actual, hora_actual):
                 break
 
 
+
 def actualizar_hora_local():
     while True:
         with gps_lock:
@@ -126,7 +127,7 @@ def actualizar_hora_local():
         hora_local = datetime.now()
         send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
         send_to_nextion(hora_local.strftime("%Y-%m-%d"), "t1")
-        verificar_itinerario_actual(hora_local.strftime("%Y-%m-%d"), hora_local.strftime("%H:%M:%S"))
+        verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
         time.sleep(1)
 
 def iniciar_gps_display():
@@ -174,7 +175,9 @@ def iniciar_gps_display():
 
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
-                            verificar_itinerario_actual(parsed_data['fecha'], parsed_data['hora'])
+                            send_to_nextion("08:30:00", "t3")
+                            send_to_nextion("10:30:00", "t4")
+                            verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
 
                             for id, name, lat, lon in control_points():
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
