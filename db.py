@@ -2,32 +2,25 @@
 import sqlite3
 
 def guardar_en_sqlite(fecha, itinerario_codigo, itinerarios):
-    conn = sqlite3.connect('itinerarios.db')
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS itinerarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fecha TEXT,
-            itinerario_codigo TEXT,
-            recorrido TEXT,
-            hora_despacho TEXT,
-            hora_fin TEXT
-        )
-    ''')
-
-
-    cursor.execute("DELETE FROM itinerarios WHERE fecha = ?", (fecha,))
-
-    for item in itinerarios:
+    with sqlite3.connect('itinerarios.db') as conn:
+        cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO itinerarios (fecha, itinerario_codigo, recorrido, hora_despacho, hora_fin)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (fecha, itinerario_codigo, item.get("recorrido", ""), item.get("hora_despacho", ""), item.get("hora_fin", "")))
-
-    conn.commit()
-    conn.close()
-
+            CREATE TABLE IF NOT EXISTS itinerarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fecha TEXT,
+                itinerario_codigo TEXT,
+                recorrido TEXT,
+                hora_despacho TEXT,
+                hora_fin TEXT
+            )
+        ''')
+        cursor.execute("DELETE FROM itinerarios WHERE fecha = ?", (fecha,))
+        for item in itinerarios:
+            cursor.execute('''
+                INSERT INTO itinerarios (fecha, itinerario_codigo, recorrido, hora_despacho, hora_fin)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (fecha, itinerario_codigo, item.get("recorrido", ""), item.get("hora_despacho", ""), item.get("hora_fin", "")))
+        conn.commit()
 
 
 def cargar_desde_sqlite(fecha):
@@ -64,11 +57,14 @@ def cargar_desde_sqlite(fecha):
 def itinerarios_diferentes(locales, servidor):
     if len(locales) != len(servidor):
         return True
-    for i in range(len(locales)):
+    for i in range(len(servidor)):
+        loc = locales[i] if i < len(locales) else {}
+        serv = servidor[i]
+
         if (
-            locales[i].get("recorrido", "") != servidor[i].get("recorrido", "") or
-            locales[i].get("hora_despacho", "") != servidor[i].get("hora_despacho", "") or
-            locales[i].get("hora_fin", "") != servidor[i].get("hora_fin", "")
+            loc.get("recorrido", "").strip() != serv.get("recorrido", "").strip() or
+            loc.get("hora_despacho", "").strip() != serv.get("hora_despacho", "").strip() or
+            loc.get("hora_fin", "").strip() != serv.get("hora_fin", "").strip()
         ):
             return True
     return False

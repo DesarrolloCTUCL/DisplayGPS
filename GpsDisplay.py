@@ -8,6 +8,7 @@ import json
 from control_points import control_points
 from ComandosNextion import send_to_nextion,send_to_nextionPlay,dato_nextion,nextion
 from config import BUS_ID,radio,mqttpass,CERT
+from db import cargar_desde_sqlite 
 import threading
 
 # Configuración del servidor de sockets
@@ -58,7 +59,7 @@ def parse_gprmc(trama):
     try:
         estado = parts[2]
         if estado != 'A':  # 'A' indica datos válidos
-            print("Trama GPRMC no activa")
+           # print("Trama GPRMC no activa")
             return None
 
         hora_utc = parts[1]  # Ej: 134547.00
@@ -106,15 +107,26 @@ def parse_gprmc(trama):
         return None
 
 
+def verificar_itinerario_actual(fecha_actual, hora_actual):
+    codigo, itinerarios = cargar_desde_sqlite(fecha_actual)
+    for item in itinerarios:
+        hora_inicio = item["hora_despacho"]
+        hora_fin = item["hora_fin"]
+        if hora_inicio and hora_fin:
+            if hora_inicio <= hora_actual <= hora_fin:
+                send_to_nextion(hora_inicio, "t3")
+                send_to_nextion(hora_fin, "t4")
+                break
+
+
 def actualizar_hora_local():
     while True:
         with gps_lock:
             activo = gps_activo
-        if not activo:
-            hora_local = datetime.now()
-            send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
-            send_to_nextion(hora_local.strftime("%Y-%m-%d"), "t1")
-            
+        hora_local = datetime.now()
+        send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
+        send_to_nextion(hora_local.strftime("%Y-%m-%d"), "t1")
+        verificar_itinerario_actual(hora_local.strftime("%Y-%m-%d"), hora_local.strftime("%H:%M:%S"))
         time.sleep(1)
 
 def iniciar_gps_display():
@@ -149,23 +161,24 @@ def iniciar_gps_display():
                         parsed_data = parse_gprmc(trama)
 
                         if parsed_data:
+                            hora_gps = parsed_data["hora_obj"]
+                            hora_local = datetime.now()
+
+                            diferencia = abs((hora_local - hora_gps).total_seconds())
+                            if diferencia > 10:
+                                print(f"Ignorando trama atrasada: {parsed_data['hora']} (diferencia: {diferencia} segundos)")
+                                continue  # Ignora tramas viejas
+
                             with gps_lock:
                                 gps_activo = True
 
-                            hora_local = datetime.now()
-                            hora_gps = parsed_data["hora_obj"]
-
-                            diferencia = abs((hora_local - hora_gps).total_seconds())
                             send_to_nextion(parsed_data['fecha'], "t1")
-
-                            if diferencia > 5:
-                                send_to_nextion(f"{parsed_data['hora']}", "t0")
-                            else:
-                                send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
+                            send_to_nextion(parsed_data['hora'], "t0")
+                            verificar_itinerario_actual(parsed_data['fecha'], parsed_data['hora'])
 
                             for id, name, lat, lon in control_points():
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 55:
+                                if distancia <= 205:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         send_to_nextion(name, "g0")
