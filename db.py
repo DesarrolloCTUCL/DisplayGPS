@@ -60,3 +60,15 @@ def cargar_desde_sqlite(fecha):
     codigo_itinerario = filas[0][0]
     itinerarios = [{"recorrido": f[1], "hora_despacho": f[2], "hora_fin": f[3]} for f in filas]
     return codigo_itinerario, itinerarios
+
+def itinerarios_diferentes(locales, servidor):
+    if len(locales) != len(servidor):
+        return True
+    for i in range(len(locales)):
+        if (
+            locales[i].get("recorrido", "") != servidor[i].get("recorrido", "") or
+            locales[i].get("hora_despacho", "") != servidor[i].get("hora_despacho", "") or
+            locales[i].get("hora_fin", "") != servidor[i].get("hora_fin", "")
+        ):
+            return True
+    return False
