@@ -175,8 +175,6 @@ def iniciar_gps_display():
 
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
-                            send_to_nextion("08:30:00", "t3")
-                            send_to_nextion("10:30:00", "t4")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
 
                             for id, name, lat, lon in control_points():
