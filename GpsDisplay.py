@@ -140,7 +140,7 @@ def iniciar_gps_display():
             while True:
                 conn, addr = server.accept()
                 with conn:
-                    print(f"Conexión establecida desde {addr}")
+                  
                     while True:
                         data = conn.recv(1024)
                         if not data:
@@ -156,7 +156,6 @@ def iniciar_gps_display():
                             hora_gps = parsed_data["hora_obj"]
 
                             diferencia = abs((hora_local - hora_gps).total_seconds())
-                            send_to_nextion(f"{parsed_data['velocidad_kmh']} km/h", "t16")
                             send_to_nextion(parsed_data['fecha'], "t1")
 
                             if diferencia > 5:
