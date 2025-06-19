@@ -116,6 +116,7 @@ def verificar_itinerario_actual(fecha_actual, hora_actual):
             if hora_inicio <= hora_actual <= hora_fin:
                 send_to_nextion(hora_inicio, "t3")
                 send_to_nextion(hora_fin, "t4")
+                send_to_nextion(item["recorrido"], "t6")
                 break
 
 

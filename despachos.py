@@ -84,10 +84,13 @@ def obtener_datos_itinerario():
 
         if recorrido:
             send_to_nextion(recorrido, f"t{9 + i}")
+            time.sleep(0.02)
         if hora_despacho:
             send_to_nextion(hora_despacho, f"t{24 + i}")
+            time.sleep(0.02)
         if hora_fin:
             send_to_nextion(hora_fin, f"t{39 + i}")
+            time.sleep(0.02)
 
 def escuchar_itinerario(evento_itinerario):
     while True:
