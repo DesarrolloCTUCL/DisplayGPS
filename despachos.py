@@ -81,7 +81,6 @@ def obtener_datos_itinerario():
             hora_fin = itinerarios_mostrar[i].get("hora_fin", "").strip()
         else:
             recorrido = hora_despacho = hora_fin = ""
-
         if recorrido:
             send_to_nextion(recorrido, f"t{9 + i}")
             time.sleep(0.02)

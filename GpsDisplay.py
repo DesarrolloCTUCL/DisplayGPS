@@ -6,7 +6,8 @@ from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 import json
 from control_points import control_points
-from ComandosNextion import send_to_nextion,send_to_nextionPlay,dato_nextion,nextion
+from ComandosNextion import send_to_nextion,send_to_nextionPlay,nextion,last_sent_texts
+from despachos import obtener_datos_itinerario
 from config import BUS_ID,radio,mqttpass,CERT
 from db import cargar_desde_sqlite 
 import threading
@@ -108,6 +109,7 @@ def parse_gprmc(trama):
 
 
 def verificar_itinerario_actual(fecha_actual, hora_actual):
+    
     codigo, itinerarios = cargar_desde_sqlite(fecha_actual)
     for item in itinerarios:
         hora_inicio = item["hora_despacho"]
@@ -132,18 +134,30 @@ def actualizar_hora_local():
         time.sleep(1)
 
 def iniciar_gps_display():
-    # Conectar a AWS IoT
-    print("Conectando a AWS IoT...")
-    connect_future = mqtt_connection.connect()
-    connect_future.result()
-    print("✅ Conectado a AWS IoT Core")
-    TOPIC = "buses/gps"
+    # Conectar a AWS IoT con reintentos cada 5 segundos si falla
+    while True:
+        try:
+            print("🔌 Intentando conectar a AWS IoT...")
+            send_to_nextion("Conectando...", "t2")
+            connect_future = mqtt_connection.connect()
+            connect_future.result(timeout=10)
+            print("✅ Conectado a AWS IoT Core")
+            obtener_datos_itinerario()
+            last_sent_texts.clear()
+            send_to_nextion(CLIENT_ID, "t2")
+            break  # Salir del bucle si se conectó correctamente
+        except Exception as e:
+            print(f"❌ Error de conexión: {e}")
+            send_to_nextion("Sin conexión", "t2")
+            print("🔄 Reintentando en 5 segundos...")
+            time.sleep(5)
 
-    send_to_nextion(CLIENT_ID, "t2")
+    TOPIC = "buses/gps"
 
     # Iniciar hilo para actualizar hora local cuando GPS inactivo
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
     puntos_notificados = set()
+
     # Iniciar el servidor de sockets
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
@@ -154,7 +168,6 @@ def iniciar_gps_display():
             while True:
                 conn, addr = server.accept()
                 with conn:
-                  
                     while True:
                         data = conn.recv(1024)
                         if not data:
@@ -165,11 +178,10 @@ def iniciar_gps_display():
                         if parsed_data:
                             hora_gps = parsed_data["hora_obj"]
                             hora_local = datetime.now()
-
                             diferencia = abs((hora_local - hora_gps).total_seconds())
                             if diferencia > 10:
                                 print(f"Ignorando trama atrasada: {parsed_data['hora']} (diferencia: {diferencia} segundos)")
-                                continue  # Ignora tramas viejas
+                                continue
 
                             with gps_lock:
                                 gps_activo = True
@@ -202,11 +214,9 @@ def iniciar_gps_display():
                                             qos=mqtt.QoS.AT_LEAST_ONCE
                                         )
                                         print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
-
-                                        puntos_notificados.add(name)  # Marca que ya notificaste este punto
+                                        puntos_notificados.add(name)
                                     break
                                 else:
-                                    # Si estás fuera del rango, removemos el punto de la lista para que pueda ser notificado de nuevo cuando regreses
                                     if name in puntos_notificados:
                                         puntos_notificados.remove(name)
                         else:
