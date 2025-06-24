@@ -73,7 +73,7 @@ def iniciar_gps_display():
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
 
-    TOPIC = "buses/gps"
+    TOPIC = "buses/gps/1542"
 
     # Iniciar hilo para actualizar hora local
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
