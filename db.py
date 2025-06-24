@@ -25,6 +25,12 @@ def guardar_en_sqlite(fecha, itinerario_codigo, itinerarios):
         
         for item in itinerarios:
             chainpc = item.get("turno", {}).get("chainpc", [])
+            
+            # Asegurar que cada punto tenga 'numero'
+            for idx, punto in enumerate(chainpc):
+                if "numero" not in punto:
+                    punto["numero"] = 100 + idx  # O cualquier valor único o representativo
+
             chainpc_json = json.dumps(chainpc, ensure_ascii=False)
 
             cursor.execute('''
