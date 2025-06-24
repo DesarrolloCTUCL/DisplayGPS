@@ -58,7 +58,7 @@ def iniciar_gps_display():
     # Conectar a AWS IoT con reintentos cada 5 segundos si falla
     while True:
         try:
-            print("🔌 Intentando conectar a AWS IoT...")
+            print("[Main] Sistema iniciado. Esperando comandos...")
             send_to_nextion("Conectando...", "t2")
             connect_future = mqtt_connection.connect()
             connect_future.result(timeout=10)
@@ -66,7 +66,7 @@ def iniciar_gps_display():
             obtener_datos_itinerario()
             last_sent_texts.clear()
             send_to_nextion(CLIENT_ID, "t2")
-            break  # Salir del bucle si se conectó correctamente
+            break
         except Exception as e:
             print(f"❌ Error de conexión: {e}")
             send_to_nextion("Sin conexión", "t2")
@@ -75,7 +75,7 @@ def iniciar_gps_display():
 
     TOPIC = "buses/gps"
 
-    # Iniciar hilo para actualizar hora local cuando GPS inactivo
+    # Iniciar hilo para actualizar hora local
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
     puntos_notificados = set()
 
@@ -100,8 +100,7 @@ def iniciar_gps_display():
                             hora_local = datetime.now()
                             diferencia = abs((hora_local - hora_gps).total_seconds())
                             if diferencia > 10:
-                                print(f"Ignorando trama atrasada: {parsed_data['hora']} (diferencia: {diferencia} segundos)")
-                                continue
+                                continue  # Ignorar trama vieja
 
                             with gps_lock:
                                 gps_activo = True
@@ -109,12 +108,12 @@ def iniciar_gps_display():
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
-
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
-                            itinerarios = obtener_chainpc_por_itinerario()
 
-                            # Buscar solo el itinerario activo
+                            itinerarios = obtener_chainpc_por_itinerario()
                             itinerario_activo = None
+                            id_itin_activo = None
+
                             for id_itin, data in itinerarios.items():
                                 hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
                                 hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
@@ -122,21 +121,19 @@ def iniciar_gps_display():
                                 if hora_despacho_dt <= hora_fin_dt:
                                     activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
                                 else:
-                                    # Caso ventana que cruza medianoche
                                     activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_dt
 
                                 if activo:
-                                    print(f"🧭 Itinerario {id_itin} con rango horario {data['hora_despacho']} - {data['hora_fin']} (Activo)")
                                     itinerario_activo = data
-                                    break  # Solo uno activo a la vez
+                                    id_itin_activo = id_itin
+                                    break
 
-                            if itinerario_activo is None:
-                                print("No hay itinerario activo a esta hora.")
-                                puntos = []
-                            else:
+                            if itinerario_activo:
+                                print(f"🧭 Itinerario {id_itin_activo} con rango horario {itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']} (Activo)")
                                 puntos = itinerario_activo.get("puntos", [])
+                            else:
+                                puntos = []
 
-                            # Procesar solo puntos del itinerario activo
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
                                 lat = punto.get("lat")
@@ -144,7 +141,6 @@ def iniciar_gps_display():
                                 numero = punto.get("numero")
 
                                 if numero is None:
-                                    print(f"⚠️ Punto sin 'numero': {punto}")
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
