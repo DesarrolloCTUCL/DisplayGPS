@@ -40,6 +40,7 @@ def obtener_chainpc_por_itinerario():
                 continue
 
             puntos_filtrados = []
+            # Mantengo solo esta línea para saber qué itinerario y rango estamos procesando
             print(f"🧭 Itinerario {id_itinerario} con rango horario {hora_despacho} - {hora_fin}")
 
             for punto in puntos:
@@ -47,14 +48,11 @@ def obtener_chainpc_por_itinerario():
                     print(f"⚠️ Punto sin 'hora': {punto}")
                     continue
 
-                print(f"DEBUG - Punto {punto.get('numero')} tiene hora raw: '{punto['hora']}'")
                 try:
                     hora_punto_dt = datetime.strptime(punto['hora'], fmt)
                 except Exception as e:
                     print(f"⚠️ Error al parsear hora del punto {punto.get('numero')}: {e}")
                     continue
-
-                print(f"DEBUG - Punto {punto.get('numero')} hora parseada: {hora_punto_dt.time()}")
 
                 # Lógica para manejar cruce de medianoche
                 if hora_despacho_dt <= hora_fin_dt:
@@ -62,8 +60,6 @@ def obtener_chainpc_por_itinerario():
                 else:
                     # Cruce medianoche
                     dentro = hora_punto_dt >= hora_despacho_dt or hora_punto_dt <= hora_fin_dt
-
-                print(f"Comparando punto {punto.get('numero')} hora {hora_punto_dt.time()} con rango {hora_despacho_dt.time()} - {hora_fin_dt.time()} -> {'Dentro' if dentro else 'Fuera'}")
 
                 if dentro:
                     puntos_filtrados.append(punto)
@@ -73,8 +69,6 @@ def obtener_chainpc_por_itinerario():
             for punto in puntos_filtrados:
                 if "numero" not in punto:
                     print(f"⚠️ Punto sin 'numero': {punto}")
-                else:
-                    print(f"✅ Punto con 'numero': {punto['numero']} - {punto['name']}")
 
             itinerarios[id_itinerario] = {
                 "recorrido": recorrido,

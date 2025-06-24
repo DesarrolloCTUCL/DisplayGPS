@@ -6,16 +6,17 @@ from awsiot import mqtt_connection_builder
 import json
 #from control_points import control_points
 from puntoscontrol import obtener_chainpc_por_itinerario
-from ComandosNextion import send_to_nextion,send_to_nextionPlay,nextion,last_sent_texts
+from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
-from config import BUS_ID,radio,mqttpass,CERT
+from config import BUS_ID, radio, mqttpass, CERT
 
-from funciones import calcular_distancia,parse_gprmc,verificar_itinerario_actual
+from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual
 import threading
 
 # Configuración del servidor de sockets
 HOST = '0.0.0.0'  # Escucha en todas las interfaces de red
-PORT = 8500  # Mismo puerto configurado en el Teltonika
+PORT = 8500       # Mismo puerto configurado en el Teltonika
+
 # Configuración de AWS IoT MQTT
 ENDPOINT = mqttpass  # Asegúrate de usar el endpoint correcto
 CLIENT_ID = str(BUS_ID)  # Usa un nombre único
@@ -42,8 +43,6 @@ mqtt_connection = mqtt_connection_builder.mtls_from_path(
 # Variables para controlar estado GPS y sincronización de hilo
 gps_activo = False
 gps_lock = threading.Lock()
-
-
 
 def actualizar_hora_local():
     while True:
@@ -110,10 +109,11 @@ def iniciar_gps_display():
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
-                            hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
 
+                            hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
                             itinerarios = obtener_chainpc_por_itinerario()
 
+                            # Buscar solo el itinerario activo
                             itinerario_activo = None
                             for id_itin, data in itinerarios.items():
                                 hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
@@ -122,19 +122,21 @@ def iniciar_gps_display():
                                 if hora_despacho_dt <= hora_fin_dt:
                                     activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
                                 else:
-                                    # Para casos donde la ventana cruza medianoche
+                                    # Caso ventana que cruza medianoche
                                     activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_dt
 
                                 if activo:
+                                    print(f"🧭 Itinerario {id_itin} con rango horario {data['hora_despacho']} - {data['hora_fin']} (Activo)")
                                     itinerario_activo = data
-                                    break  # Solo un itinerario activo a la vez
+                                    break  # Solo uno activo a la vez
 
-                            if itinerario_activo:
-                                puntos = itinerario_activo.get("puntos", [])
+                            if itinerario_activo is None:
+                                print("No hay itinerario activo a esta hora.")
+                                puntos = []
                             else:
-                                puntos = []  # No hay itinerario activo ahora
+                                puntos = itinerario_activo.get("puntos", [])
 
-                            # Ahora procesar solo esos puntos:
+                            # Procesar solo puntos del itinerario activo
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
                                 lat = punto.get("lat")
