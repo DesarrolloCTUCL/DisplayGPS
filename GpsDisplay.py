@@ -107,6 +107,7 @@ def iniciar_gps_display():
 
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
+                            
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
 
@@ -133,6 +134,8 @@ def iniciar_gps_display():
                                 puntos = itinerario_activo.get("puntos", [])
                             else:
                                 puntos = []
+                                send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
+                                send_to_nextion("--:--:--", "t5")
 
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
