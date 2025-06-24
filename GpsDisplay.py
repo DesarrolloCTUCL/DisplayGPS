@@ -147,8 +147,21 @@ def iniciar_gps_display():
                                 if distancia <= 305:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
-                                        send_to_nextion(name, "g0")
+                                        #send_to_nextion(name, "g0")
                                         send_to_nextionPlay(0, int(numero) - 1)
+
+                                        # Buscar siguiente punto
+                                        index_actual = next((i for i, p in enumerate(puntos) if p.get("numero") == numero), None)
+                                        if index_actual is not None and index_actual + 1 < len(puntos):
+                                            siguiente_punto = puntos[index_actual + 1]
+                                            siguiente_nombre = siguiente_punto.get("name", "Siguiente")
+                                            siguiente_hora = siguiente_punto.get("hora", "--:--:--")
+
+                                            send_to_nextion(siguiente_nombre, "g0")  # Nombre del siguiente punto
+                                            send_to_nextion(siguiente_hora, "t5")    # Hora programada del siguiente punto
+                                        else:
+                                            send_to_nextion("FIN", "g0")
+                                            send_to_nextion("--:--:--", "t5")
 
                                         mensaje_mqtt = {
                                             "BusID": CLIENT_ID,
