@@ -112,19 +112,28 @@ def iniciar_gps_display():
                             send_to_nextion(parsed_data['hora'], "t0")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
                             itinerarios = obtener_chainpc_por_itinerario()
-                            
+
                             for id_itin, data in itinerarios.items():
-                                for punto in data["puntos"]:
-                                    name = punto["name"]
-                                    lat = punto["lat"]
-                                    lon = punto["long"]
+                                puntos = data.get("puntos", [])
+                                print(f"🧭 Itinerario {id_itin} con {len(puntos)} puntos")
+
+                                for punto in puntos:
+                                    name = punto.get("name", "Sin nombre")
+                                    lat = punto.get("lat")
+                                    lon = punto.get("long")
+                                    numero = punto.get("numero")
+
+                                    if numero is None:
+                                        print(f"⚠️ Punto sin 'numero': {punto}")
+                                        continue
 
                                     distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
                                     if distancia <= 205:
                                         if name not in puntos_notificados:
                                             print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                             send_to_nextion(name, "g0")
-                                            send_to_nextionPlay(0, punto["numero"] - 1)
+                                            send_to_nextionPlay(0, int(numero) - 1)
+
                                             mensaje_mqtt = {
                                                 "BusID": CLIENT_ID,
                                                 "fecha": parsed_data["fecha"],
@@ -146,6 +155,7 @@ def iniciar_gps_display():
                                     else:
                                         if name in puntos_notificados:
                                             puntos_notificados.remove(name)
+
                         else:
                             with gps_lock:
                                 gps_activo = False
