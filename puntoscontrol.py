@@ -1,7 +1,6 @@
 import sqlite3
 import json
 
-
 def obtener_chainpc_por_itinerario():
     """
     Extrae cada itinerario individual con su recorrido, hora_despacho, hora_fin y sus puntos chainpc.
@@ -11,7 +10,7 @@ def obtener_chainpc_por_itinerario():
             "recorrido": "...",
             "hora_despacho": "...",
             "hora_fin": "...",
-            "puntos": [ {name, lat, long, hora}, ... ]
+            "puntos": [ {numero, name, lat, long, hora}, ... ]
         },
         ...
     }
@@ -30,6 +29,14 @@ def obtener_chainpc_por_itinerario():
             continue
         try:
             puntos = json.loads(chainpc_json)
+            print(f"🧭 Itinerario {id_itinerario} con {len(puntos)} puntos")
+
+            for punto in puntos:
+                if "numero" not in punto:
+                    print(f"⚠️ Punto sin 'numero': {punto}")
+                else:
+                    print(f"✅ Punto con 'numero': {punto['numero']} - {punto['name']}")
+
             itinerarios[id_itinerario] = {
                 "recorrido": recorrido,
                 "hora_despacho": hora_despacho,
@@ -37,7 +44,8 @@ def obtener_chainpc_por_itinerario():
                 "puntos": puntos
             }
             id_itinerario += 1
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"❌ Error al decodificar JSON: {e}")
             continue
 
     return itinerarios
