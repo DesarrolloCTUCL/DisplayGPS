@@ -5,7 +5,7 @@ from datetime import datetime
 def obtener_chainpc_por_itinerario():
     """
     Extrae cada itinerario individual con su recorrido, hora_despacho, hora_fin y sus puntos chainpc,
-    filtrando los puntos que estén entre hora_despacho y hora_fin.
+    filtrando los puntos que estén entre hora_despacho y hora_fin (considerando cruces de medianoche).
     Retorna un diccionario:
     {
         1: {
@@ -31,29 +31,44 @@ def obtener_chainpc_por_itinerario():
             continue
         try:
             puntos = json.loads(chainpc_json)
+            fmt = "%H:%M:%S"  # Ajusta según tu formato de hora
+            try:
+                hora_despacho_dt = datetime.strptime(hora_despacho, fmt)
+                hora_fin_dt = datetime.strptime(hora_fin, fmt)
+            except Exception as e:
+                print(f"❌ Error al parsear hora_despacho o hora_fin del itinerario {id_itinerario}: {e}")
+                continue
 
-            # Convertir horas a datetime para comparación
-            fmt = "%H:%M:%S"  # o el formato que corresponda, ajustar según tu dato
-            hora_despacho_dt = datetime.strptime(hora_despacho, fmt)
-            hora_fin_dt = datetime.strptime(hora_fin, fmt)
-
-            # Filtrar puntos con campo 'hora' entre hora_despacho y hora_fin
             puntos_filtrados = []
+            print(f"🧭 Itinerario {id_itinerario} con rango horario {hora_despacho} - {hora_fin}")
+
             for punto in puntos:
                 if "hora" not in punto:
-                    print(f"⚠️ Punto sin 'hora': {punto}, se omite")
+                    print(f"⚠️ Punto sin 'hora': {punto}")
                     continue
 
+                print(f"DEBUG - Punto {punto.get('numero')} tiene hora raw: '{punto['hora']}'")
                 try:
                     hora_punto_dt = datetime.strptime(punto['hora'], fmt)
                 except Exception as e:
-                    print(f"⚠️ Error al parsear hora del punto {punto['numero']}: {e}")
+                    print(f"⚠️ Error al parsear hora del punto {punto.get('numero')}: {e}")
                     continue
 
-                if hora_despacho_dt <= hora_punto_dt <= hora_fin_dt:
+                print(f"DEBUG - Punto {punto.get('numero')} hora parseada: {hora_punto_dt.time()}")
+
+                # Lógica para manejar cruce de medianoche
+                if hora_despacho_dt <= hora_fin_dt:
+                    dentro = hora_despacho_dt <= hora_punto_dt <= hora_fin_dt
+                else:
+                    # Cruce medianoche
+                    dentro = hora_punto_dt >= hora_despacho_dt or hora_punto_dt <= hora_fin_dt
+
+                print(f"Comparando punto {punto.get('numero')} hora {hora_punto_dt.time()} con rango {hora_despacho_dt.time()} - {hora_fin_dt.time()} -> {'Dentro' if dentro else 'Fuera'}")
+
+                if dentro:
                     puntos_filtrados.append(punto)
 
-            print(f"🧭 Itinerario {id_itinerario} con {len(puntos_filtrados)} puntos filtrados entre {hora_despacho} y {hora_fin}")
+            print(f"🧭 Itinerario {id_itinerario} tiene {len(puntos_filtrados)} puntos dentro del rango horario")
 
             for punto in puntos_filtrados:
                 if "numero" not in punto:
@@ -68,6 +83,7 @@ def obtener_chainpc_por_itinerario():
                 "puntos": puntos_filtrados
             }
             id_itinerario += 1
+
         except json.JSONDecodeError as e:
             print(f"❌ Error al decodificar JSON: {e}")
             continue
