@@ -4,7 +4,8 @@ from datetime import datetime
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 import json
-from control_points import control_points
+#from control_points import control_points
+from puntoscontrol import obtener_chainpc_por_itinerario
 from ComandosNextion import send_to_nextion,send_to_nextionPlay,nextion,last_sent_texts
 from despachos import obtener_datos_itinerario
 from config import BUS_ID,radio,mqttpass,CERT
@@ -110,36 +111,42 @@ def iniciar_gps_display():
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
+                            itinerarios = obtener_chainpc_por_itinerario()
+                            
+                            for id_itin, data in itinerarios.items():
+                                for punto in data["puntos"]:
+                                    name = punto["name"]
+                                    lat = punto["lat"]
+                                    lon = punto["long"]
 
-                            for id, name, lat, lon in control_points():
-                                distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 205:
-                                    if name not in puntos_notificados:
-                                        print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
-                                        send_to_nextion(name, "g0")
-                                        send_to_nextionPlay(0, id)
+                                    distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
+                                    if distancia <= 205:
+                                        if name not in puntos_notificados:
+                                            print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
+                                            send_to_nextion(name, "g0")
+                                            send_to_nextionPlay(0, id_itin)  # O usa otro identificador si aplica
 
-                                        mensaje_mqtt = {
-                                            "BusID": CLIENT_ID,
-                                            "fecha": parsed_data["fecha"],
-                                            "hora": parsed_data["hora"],
-                                            "punto_control": name,
-                                            "latitud": parsed_data["latitud"],
-                                            "longitud": parsed_data["longitud"],
-                                            "velocidad_kmh": parsed_data["velocidad_kmh"]
-                                        }
+                                            mensaje_mqtt = {
+                                                "BusID": CLIENT_ID,
+                                                "fecha": parsed_data["fecha"],
+                                                "hora": parsed_data["hora"],
+                                                "punto_control": name,
+                                                "latitud": parsed_data["latitud"],
+                                                "longitud": parsed_data["longitud"],
+                                                "velocidad_kmh": parsed_data["velocidad_kmh"]
+                                            }
 
-                                        mqtt_connection.publish(
-                                            topic=TOPIC,
-                                            payload=json.dumps(mensaje_mqtt),
-                                            qos=mqtt.QoS.AT_LEAST_ONCE
-                                        )
-                                        print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
-                                        puntos_notificados.add(name)
-                                    break
-                                else:
-                                    if name in puntos_notificados:
-                                        puntos_notificados.remove(name)
+                                            mqtt_connection.publish(
+                                                topic=TOPIC,
+                                                payload=json.dumps(mensaje_mqtt),
+                                                qos=mqtt.QoS.AT_LEAST_ONCE
+                                            )
+                                            print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
+                                            puntos_notificados.add(name)
+                                        break
+                                    else:
+                                        if name in puntos_notificados:
+                                            puntos_notificados.remove(name)
                         else:
                             with gps_lock:
                                 gps_activo = False
