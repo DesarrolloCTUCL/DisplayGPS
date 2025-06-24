@@ -96,7 +96,6 @@ def iniciar_gps_display():
                             break
                         trama = data.decode().strip()
                         parsed_data = parse_gprmc(trama)
-
                         if parsed_data:
                             hora_gps = parsed_data["hora_obj"]
                             hora_local = datetime.now()
@@ -113,48 +112,66 @@ def iniciar_gps_display():
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
                             itinerarios = obtener_chainpc_por_itinerario()
 
+                            hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
+
+                            itinerario_activo = None
                             for id_itin, data in itinerarios.items():
-                                puntos = data.get("puntos", [])
-                                #print(f"🧭 Itinerario {id_itin} con {len(puntos)} puntos")
+                                hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
+                                hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
 
-                                for punto in puntos:
-                                    name = punto.get("name", "Sin nombre")
-                                    lat = punto.get("lat")
-                                    lon = punto.get("long")
-                                    numero = punto.get("numero")
+                                if hora_despacho_dt <= hora_fin_dt:
+                                    activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
+                                else:
+                                    # caso cruce medianoche
+                                    activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_dt
 
-                                    if numero is None:
-                                        print(f"⚠️ Punto sin 'numero': {punto}")
-                                        continue
+                                if activo:
+                                    itinerario_activo = data
+                                    break  # Solo un itinerario activo a la vez
 
-                                    distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                    if distancia <= 305:
-                                        if name not in puntos_notificados:
-                                            print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
-                                            send_to_nextion(name, "g0")
-                                            send_to_nextionPlay(0, int(numero) - 1)
+                            if itinerario_activo:
+                                puntos = itinerario_activo.get("puntos", [])
+                            else:
+                                puntos = []  # No hay itinerario activo, no procesar puntos
 
-                                            mensaje_mqtt = {
-                                                "BusID": CLIENT_ID,
-                                                "fecha": parsed_data["fecha"],
-                                                "hora": parsed_data["hora"],
-                                                "punto_control": name,
-                                                "latitud": parsed_data["latitud"],
-                                                "longitud": parsed_data["longitud"],
-                                                "velocidad_kmh": parsed_data["velocidad_kmh"]
-                                            }
+                            for punto in puntos:
+                                name = punto.get("name", "Sin nombre")
+                                lat = punto.get("lat")
+                                lon = punto.get("long")
+                                numero = punto.get("numero")
 
-                                            mqtt_connection.publish(
-                                                topic=TOPIC,
-                                                payload=json.dumps(mensaje_mqtt),
-                                                qos=mqtt.QoS.AT_LEAST_ONCE
-                                            )
-                                            print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
-                                            puntos_notificados.add(name)
-                                        break
-                                    else:
-                                        if name in puntos_notificados:
-                                            puntos_notificados.remove(name)
+                                if numero is None:
+                                    print(f"⚠️ Punto sin 'numero': {punto}")
+                                    continue
+
+                                distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
+                                if distancia <= 305:
+                                    if name not in puntos_notificados:
+                                        print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
+                                        send_to_nextion(name, "g0")
+                                        send_to_nextionPlay(0, int(numero) - 1)
+
+                                        mensaje_mqtt = {
+                                            "BusID": CLIENT_ID,
+                                            "fecha": parsed_data["fecha"],
+                                            "hora": parsed_data["hora"],
+                                            "punto_control": name,
+                                            "latitud": parsed_data["latitud"],
+                                            "longitud": parsed_data["longitud"],
+                                            "velocidad_kmh": parsed_data["velocidad_kmh"]
+                                        }
+
+                                        mqtt_connection.publish(
+                                            topic=TOPIC,
+                                            payload=json.dumps(mensaje_mqtt),
+                                            qos=mqtt.QoS.AT_LEAST_ONCE
+                                        )
+                                        print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
+                                        puntos_notificados.add(name)
+                                    break
+                                else:
+                                    if name in puntos_notificados:
+                                        puntos_notificados.remove(name)
 
                         else:
                             with gps_lock:
