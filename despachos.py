@@ -20,7 +20,7 @@ def itinerarios_diferentes(locales, servidor):
     return False
 
 def obtener_datos_itinerario():
-    url = f"https://www.ctucloja.com/despacho_display/bus/{BUS_ID}/itinerarios"
+    url = f"https://www.ctucloja.com/api/despacho_display/bus/{BUS_ID}/itinerarios"
     fecha_raspberry = datetime.now().strftime("%d/%m/%Y")
     datos_obtenidos = False
 
@@ -30,12 +30,13 @@ def obtener_datos_itinerario():
 
         if response.status_code == 200:
             data = response.json()
-            fecha_servidor = data.get("fecha", "")
-            codigo_itinerario_servidor = data.get("itinerario", "")
+            fecha_servidor = data.get("date", "")
+            codigo_itinerario_servidor = data.get("itinerary", "")
             itinerarios_servidor = data.get("itinerarios", [])
 
             print(f"Fecha Raspberry Pi: {fecha_raspberry}")
             print(f"Fecha del Servidor: {fecha_servidor}")
+  
 
             if fecha_raspberry == fecha_servidor and codigo_itinerario_servidor and itinerarios_servidor:
                 codigo_itinerario_local, itinerarios_locales = cargar_desde_sqlite(fecha_raspberry)

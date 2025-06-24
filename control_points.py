@@ -1,3 +1,16 @@
+
+from puntoscontrol import obtener_chainpc_por_itinerario
+
+itinerarios = obtener_chainpc_por_itinerario()
+
+print(f"Total de itinerarios encontrados: {len(itinerarios)}\n")
+
+for id_itin, data in itinerarios.items():
+    print(f"Itinerario {id_itin}: {data['recorrido']}")
+    for i, punto in enumerate(data["puntos"], 1):
+        print(f"  {i}. {punto['name']} ({punto['lat']}, {punto['long']}) a las {punto['hora']}")
+    print("-" * 50)
+    
 def control_points():
     return [
         (0, "despacho bolonia", -3.9954252, -79.2381997),
