@@ -110,9 +110,9 @@ def iniciar_gps_display():
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
-                            itinerarios = obtener_chainpc_por_itinerario()
-
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
+
+                            itinerarios = obtener_chainpc_por_itinerario()
 
                             itinerario_activo = None
                             for id_itin, data in itinerarios.items():
@@ -122,7 +122,7 @@ def iniciar_gps_display():
                                 if hora_despacho_dt <= hora_fin_dt:
                                     activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
                                 else:
-                                    # caso cruce medianoche
+                                    # Para casos donde la ventana cruza medianoche
                                     activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_dt
 
                                 if activo:
@@ -132,8 +132,9 @@ def iniciar_gps_display():
                             if itinerario_activo:
                                 puntos = itinerario_activo.get("puntos", [])
                             else:
-                                puntos = []  # No hay itinerario activo, no procesar puntos
+                                puntos = []  # No hay itinerario activo ahora
 
+                            # Ahora procesar solo esos puntos:
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
                                 lat = punto.get("lat")
