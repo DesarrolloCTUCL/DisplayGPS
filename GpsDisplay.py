@@ -124,8 +124,7 @@ def iniciar_gps_display():
                                         if name not in puntos_notificados:
                                             print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                             send_to_nextion(name, "g0")
-                                            send_to_nextionPlay(0, id_itin)  # O usa otro identificador si aplica
-
+                                            send_to_nextionPlay(0, punto["numero"] - 1)
                                             mensaje_mqtt = {
                                                 "BusID": CLIENT_ID,
                                                 "fecha": parsed_data["fecha"],
