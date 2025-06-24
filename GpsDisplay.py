@@ -115,7 +115,7 @@ def iniciar_gps_display():
 
                             for id_itin, data in itinerarios.items():
                                 puntos = data.get("puntos", [])
-                                print(f"🧭 Itinerario {id_itin} con {len(puntos)} puntos")
+                                #print(f"🧭 Itinerario {id_itin} con {len(puntos)} puntos")
 
                                 for punto in puntos:
                                     name = punto.get("name", "Sin nombre")
