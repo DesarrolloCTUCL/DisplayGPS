@@ -147,7 +147,7 @@ def iniciar_gps_display():
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 405:
+                                if distancia <= 150:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         #send_to_nextion(name, "g0")
@@ -173,7 +173,8 @@ def iniciar_gps_display():
                                             "punto_control": name,
                                             "latitud": parsed_data["latitud"],
                                             "longitud": parsed_data["longitud"],
-                                            "velocidad_kmh": parsed_data["velocidad_kmh"]
+                                            "velocidad_kmh": parsed_data["velocidad_kmh"],
+                                            "itinerario_id": id_itin_activo
                                         }
 
                                         mqtt_connection.publish(
