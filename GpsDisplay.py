@@ -56,6 +56,8 @@ def actualizar_hora_local():
 
 def iniciar_gps_display():
     # Conectar a AWS IoT con reintentos cada 5 segundos si falla
+    ruta_iniciada = False
+    ruta_anterior = None
     while True:
         try:
             print("[Main] Sistema iniciado. Esperando comandos...")
@@ -73,7 +75,7 @@ def iniciar_gps_display():
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
 
-    TOPIC = "buses/gps/1542"
+    TOPIC = f"buses/gps/{BUS_ID}"
 
     # Iniciar hilo para actualizar hora local
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
@@ -99,7 +101,7 @@ def iniciar_gps_display():
                             hora_gps = parsed_data["hora_obj"]
                             hora_local = datetime.now()
                             diferencia = abs((hora_local - hora_gps).total_seconds())
-                            if diferencia > 10:
+                            if diferencia > 3:
                                 continue  # Ignorar trama vieja
 
                             with gps_lock:
@@ -111,11 +113,11 @@ def iniciar_gps_display():
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
 
-                            itinerarios = obtener_chainpc_por_itinerario()
+                            turnos = obtener_chainpc_por_itinerario()
                             itinerario_activo = None
                             id_itin_activo = None
 
-                            for id_itin, data in itinerarios.items():
+                            for id_itin, data in turnos.items():
                                 hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
                                 hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
 
@@ -132,10 +134,25 @@ def iniciar_gps_display():
                             if itinerario_activo:
                                 print(f"🧭 Itinerario {id_itin_activo} con rango horario {itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']} (Activo)")
                                 puntos = itinerario_activo.get("puntos", [])
+
+                                # Mostrar primer punto de control solo cuando inicia o cambia el itinerario
+                                if not ruta_iniciada or ruta_anterior != id_itin_activo:
+                                    if puntos:
+                                        primer_punto = puntos[0]
+                                        nombre = primer_punto.get("name", "Inicio")
+                                        hora_prog = primer_punto.get("hora", "--:--:--")
+                                        send_to_nextion(nombre, "g0")
+                                        send_to_nextion(hora_prog, "t5")
+                                        print(f"🟢 Mostrando primer punto de control al iniciar ruta: {nombre}")
+                                    ruta_iniciada = True
+                                    ruta_anterior = id_itin_activo
                             else:
                                 puntos = []
                                 send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
                                 send_to_nextion("--:--:--", "t5")
+                                ruta_iniciada = False
+                                ruta_anterior = None
+
 
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
