@@ -30,9 +30,10 @@ def obtener_datos_itinerario():
 
         if response.status_code == 200:
             data = response.json()
-            fecha_servidor = data.get("date", "")
-            codigo_itinerario_servidor = data.get("itinerary", "")
-            itinerarios_servidor = data.get("itinerarios", [])
+            datos = data.get("data", {})
+            fecha_servidor = datos.get("date", "")
+            codigo_itinerario_servidor = datos.get("itinerary", "")
+            itinerarios_servidor = datos.get("itinerarios", [])
 
             print(f"Fecha Raspberry Pi: {fecha_raspberry}")
             print(f"Fecha del Servidor: {fecha_servidor}")

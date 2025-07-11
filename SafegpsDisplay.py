@@ -96,7 +96,7 @@ def simular_tramas_gps():
                 continue
 
             distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-            if distancia <= 150:
+            if distancia <= 850:
                 if name not in puntos_notificados:
                     print(f"✅ Punto alcanzado: {name} (Distancia: {round(distancia, 2)} m)")
                     send_to_nextionPlay(0, int(numero) - 1)

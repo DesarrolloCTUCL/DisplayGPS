@@ -7,14 +7,14 @@ import time
 # Configuración de la pantalla Nextion
 
 
-nextion = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+nextion = serial.Serial('/dev/serial0', 9600, timeout=1)
+#nextion = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
 # Función para leer el puerto y meter datos en la cola
 def leer_serial(evento_itinerario):
-    import serial
-    ser = serial.Serial('/dev/ttyUSB0', 9600, timeout=1)
+   
     while True:
         try:
-            dato_bytes = ser.read()
+            dato_bytes = nextion.read()
             dato = dato_bytes.decode('utf-8').strip()
         except UnicodeDecodeError:
             # Ignorar bytes que no se pueden decodificar
