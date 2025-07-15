@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 from puntoscontrol import obtener_chainpc_por_itinerario
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
@@ -22,18 +22,21 @@ def actualizar_hora_local():
         time.sleep(1)
 
 def simular_tramas_gps():
-    # Coordenadas simuladas cerca del punto de control
     coordenadas_simuladas = [
-        {"latitud": -3.94620515, "longitud": -79.233946, "velocidad_kmh": 10.0},
-        {"latitud": -3.941728, "longitud": -79.227538, "velocidad_kmh": 20.0},
-        {"latitud": -3.9578, "longitud": -79.2204, "velocidad_kmh": 30.0},
-        {"latitud": -4.01303197, "longitud": -79.2058273, "velocidad_kmh": 25.0},
-        {"latitud": -4.0266216, "longitud": -79.207551, "velocidad_kmh": 15.0},
-        {"latitud": -4.03082217, "longitud": -79.2068375, "velocidad_kmh": 10.0},
-        {"latitud": -4.04817194, "longitud": -79.21165408, "velocidad_kmh": 20.0},
-        {"latitud": -3.95929, "longitud": -79.23405, "velocidad_kmh": 30.0},
-        {"latitud": -3.928058, "longitud": -79.235322, "velocidad_kmh": 15.0},
+        {"latitud": -3.96279, "longitud": -79.196586, "velocidad_kmh": 10.0},
+        {"latitud": -3.967597, "longitud": -79.196016, "velocidad_kmh": 15.0},
+        {"latitud": -3.974626, "longitud": -79.202735, "velocidad_kmh": 20.0},
+        {"latitud": -3.978437, "longitud": -79.204387, "velocidad_kmh": 25.0},
+        {"latitud": -3.9810868, "longitud": -79.20387622, "velocidad_kmh": 30.0},
+        {"latitud": -3.98810447, "longitud": -79.2031431, "velocidad_kmh": 28.0},
+        {"latitud": -3.99664296, "longitud": -79.20673718, "velocidad_kmh": 18.0},
+        {"latitud": -4.00381712, "longitud": -79.20607171, "velocidad_kmh": 22.0},
+        {"latitud": -4.01238453, "longitud": -79.20446589, "velocidad_kmh": 24.0},
+        {"latitud": -4.01674366, "longitud": -79.20908483, "velocidad_kmh": 26.0},
+        {"latitud": -4.019588, "longitud": -79.224715, "velocidad_kmh": 20.0},
     ]
+
+
 
     itinerarios = obtener_chainpc_por_itinerario()
     if not itinerarios:
@@ -49,11 +52,16 @@ def simular_tramas_gps():
     for id_itin, data in itinerarios.items():
         hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
         hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
-        if hora_despacho_dt <= hora_fin_dt:
-            activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
-        else:
-            activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_dt
+        # APLICAR MARGEN DE 10 MINUTOS
+        margen = timedelta(minutes=10)
+        hora_despacho_margen = hora_despacho_dt - margen
+        hora_fin_margen = hora_fin_dt + margen
 
+        # Lógica para rangos horarios normales y cruzados de día
+        if hora_despacho_dt <= hora_fin_dt:
+            activo = hora_despacho_margen <= hora_actual_dt <= hora_fin_margen
+        else:
+            activo = hora_actual_dt >= hora_despacho_margen or hora_actual_dt <= hora_fin_margen
         if activo:
             itinerario_activo = data
             id_itin_activo = id_itin
@@ -96,7 +104,7 @@ def simular_tramas_gps():
                 continue
 
             distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-            if distancia <= 850:
+            if distancia <= 60:
                 if name not in puntos_notificados:
                     print(f"✅ Punto alcanzado: {name} (Distancia: {round(distancia, 2)} m)")
                     send_to_nextionPlay(0, int(numero) - 1)
@@ -118,7 +126,7 @@ def simular_tramas_gps():
                     puntos_notificados.remove(name)
 
         print("---- Esperando siguiente posición ----")
-        time.sleep(3)
+        time.sleep(4)
 
 def iniciar_simulacion():
     print("[Main] Iniciando simulación de tramas GPS...")

@@ -20,45 +20,44 @@ def itinerarios_diferentes(locales, servidor):
     return False
 
 def obtener_datos_itinerario():
-    url = f"https://www.ctucloja.com/api/despacho_display/bus/{BUS_ID}/itinerarios"
-    fecha_raspberry = datetime.now().strftime("%d/%m/%Y")
+    fecha_raspberry = datetime.now().strftime("%Y-%m-%d")
+    url = f"https://www.ctucloja.com/api/despacho_display/bus/{BUS_ID}/itinerarios?date={fecha_raspberry}"
+    datos_a_mostrar = (fecha_raspberry, "", [])
     datos_obtenidos = False
 
     try:
-        print("Consultando al servidor...")
+        print(f"Consultando al servidor con fecha: {fecha_raspberry}...")
         response = requests.get(url, timeout=5)
 
         if response.status_code == 200:
             data = response.json()
+            print("Respuesta del servidor recibida correctamente")
+            
+            # Extraer datos de la nueva estructura
             datos = data.get("data", {})
-            fecha_servidor = datos.get("date", "")
             codigo_itinerario_servidor = datos.get("itinerary", "")
             itinerarios_servidor = datos.get("itinerarios", [])
 
-            print(f"Fecha Raspberry Pi: {fecha_raspberry}")
-            print(f"Fecha del Servidor: {fecha_servidor}")
-  
-
-            if fecha_raspberry == fecha_servidor and codigo_itinerario_servidor and itinerarios_servidor:
+            if codigo_itinerario_servidor and itinerarios_servidor:
+               # print(f"📋 Itinerario: {codigo_itinerario_servidor}")
+                #print(f"📅 Número de recorridos: {len(itinerarios_servidor)}")
+                
+                # Guardar en SQLite si es diferente
                 codigo_itinerario_local, itinerarios_locales = cargar_desde_sqlite(fecha_raspberry)
-
-                if (
-                    codigo_itinerario_servidor != codigo_itinerario_local or
-                    itinerarios_diferentes(itinerarios_locales, itinerarios_servidor)
-                ):
-                    print("🆕 Datos nuevos o diferentes detectados. Guardando en SQLite...")
-                    guardar_en_sqlite(fecha_servidor, codigo_itinerario_servidor, itinerarios_servidor)
-                else:
-                    print("📦 Datos del servidor ya están guardados localmente.")
-
-                datos_a_mostrar = (fecha_servidor, codigo_itinerario_servidor, itinerarios_servidor)
+                
+                if (codigo_itinerario_servidor != codigo_itinerario_local or
+                    itinerarios_diferentes(itinerarios_locales, itinerarios_servidor)):
+                    print("🆕 Datos nuevos detectados. Guardando en SQLite...")
+                    guardar_en_sqlite(fecha_raspberry, codigo_itinerario_servidor, itinerarios_servidor)
+                
+                datos_a_mostrar = (fecha_raspberry, codigo_itinerario_servidor, itinerarios_servidor)
                 datos_obtenidos = True
             else:
-                print("⚠️ Datos del servidor incompletos o con fecha inválida.")
+                print("⚠️ El servidor no devolvió datos válidos (itinerary o itinerarios vacíos)")
         else:
-            print(f"❌ Error al obtener datos del servidor: {response.status_code}")
+            print(f"❌ Error HTTP: {response.status_code}")
     except Exception as e:
-        print(f"❌ Error al conectarse al servidor: {e}")
+        print(f"❌ Error de conexión: {str(e)}")
 
     if not datos_obtenidos:
         print("Intentando cargar datos desde SQLite...")
@@ -70,28 +69,33 @@ def obtener_datos_itinerario():
             print("⚠️ No hay datos válidos en SQLite.")
             datos_a_mostrar = (fecha_raspberry, "", [])
 
-    # Mostrar datos en Nextion sin sobrescribir con campos vacíos
+    # Envío a Nextion con verificación
     fecha_mostrar, codigo_mostrar, itinerarios_mostrar = datos_a_mostrar
-
+    
+    # Enviar fecha y código
     send_to_nextion(fecha_mostrar, "t7")
     send_to_nextion(codigo_mostrar, "t8")
-
-    for i in range(15):
+    
+    # Enviar itinerarios
+    for i in range(15):  # Ajusta según tu pantalla Nextion
         if i < len(itinerarios_mostrar):
             recorrido = itinerarios_mostrar[i].get("recorrido", "").strip()
-            hora_despacho = itinerarios_mostrar[i].get("hora_despacho", "").strip()
-            hora_fin = itinerarios_mostrar[i].get("hora_fin", "").strip()
+            hora_despacho = itinerarios_mostrar[i].get("hora_despacho", "").split(':')[0:2]  # Formato HH:MM
+            hora_despacho = ':'.join(hora_despacho) if hora_despacho else ""
+            hora_fin = itinerarios_mostrar[i].get("hora_fin", "").split(':')[0:2]
+            hora_fin = ':'.join(hora_fin) if hora_fin else ""
         else:
             recorrido = hora_despacho = hora_fin = ""
+        
         if recorrido:
             send_to_nextion(recorrido, f"t{9 + i}")
-            time.sleep(0.02)
+            time.sleep(0.1)
         if hora_despacho:
             send_to_nextion(hora_despacho, f"t{24 + i}")
-            time.sleep(0.02)
+            time.sleep(0.1)
         if hora_fin:
             send_to_nextion(hora_fin, f"t{39 + i}")
-            time.sleep(0.02)
+            time.sleep(0.1)
 
 def escuchar_itinerario(evento_itinerario):
     while True:

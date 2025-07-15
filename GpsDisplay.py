@@ -1,6 +1,6 @@
 import socket
 import time
-from datetime import datetime
+from datetime import datetime,timedelta
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 import json
@@ -117,9 +117,14 @@ def iniciar_gps_display():
                             itinerario_activo = None
                             id_itin_activo = None
 
-                            for id_itin, data in turnos.items():
+                            for id_itin, data in sorted(turnos.items(), key=lambda x: datetime.strptime(x[1]['hora_despacho'], "%H:%M:%S"), reverse=True):
                                 hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
                                 hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
+
+                                # APLICAR MARGEN DE 10 MINUTOS
+                                margen = timedelta(minutes=10)
+                                hora_despacho_margen = hora_despacho_dt - margen
+                                hora_fin_margen = hora_fin_dt + margen
 
                                 if hora_despacho_dt <= hora_fin_dt:
                                     activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
@@ -164,7 +169,7 @@ def iniciar_gps_display():
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 150:
+                                if distancia <= 850:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         #send_to_nextion(name, "g0")

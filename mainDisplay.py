@@ -6,7 +6,6 @@ from GpsDisplay import iniciar_gps_display
 
 def main():
     evento_itinerario = threading.Event()
-
     hilo_serial = threading.Thread(target=leer_serial, args=(evento_itinerario,), daemon=True)
     hilo_itinerario = threading.Thread(target=escuchar_itinerario, args=(evento_itinerario,), daemon=True)
     hilo_gps = threading.Thread(target=iniciar_gps_display, daemon=True)
