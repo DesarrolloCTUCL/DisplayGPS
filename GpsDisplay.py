@@ -164,12 +164,13 @@ def iniciar_gps_display():
                                 lat = punto.get("lat")
                                 lon = punto.get("long")
                                 numero = punto.get("numero")
+                                radius = punto.get("radius",50)
 
                                 if numero is None:
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 50:
+                                if distancia <= radius:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         #send_to_nextion(name, "g0")
