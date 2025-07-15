@@ -44,6 +44,7 @@ mqtt_connection = mqtt_connection_builder.mtls_from_path(
 gps_activo = False
 gps_lock = threading.Lock()
 
+
 def actualizar_hora_local():
     while True:
         with gps_lock:
@@ -109,7 +110,6 @@ def iniciar_gps_display():
 
                             send_to_nextion(parsed_data['fecha'], "t1")
                             send_to_nextion(parsed_data['hora'], "t0")
-                            
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
 
@@ -134,14 +134,14 @@ def iniciar_gps_display():
                                 if activo:
                                     itinerario_activo = data
                                     id_itin_activo = id_itin
-                                    break
 
                             if itinerario_activo:
-                                print(f"🧭 Itinerario {id_itin_activo} con rango horario {itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']} (Activo)")
+                                #print(f"🧭 Itinerario {id_itin_activo} con rango horario {itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']} (Activo)")
                                 puntos = itinerario_activo.get("puntos", [])
 
                                 # Mostrar primer punto de control solo cuando inicia o cambia el itinerario
                                 if not ruta_iniciada or ruta_anterior != id_itin_activo:
+                                    print(f"🔁 Ruta iniciada = {ruta_iniciada}, anterior = {ruta_anterior}, actual = {id_itin_activo}")
                                     if puntos:
                                         primer_punto = puntos[0]
                                         nombre = primer_punto.get("name", "Inicio")
@@ -169,7 +169,7 @@ def iniciar_gps_display():
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 850:
+                                if distancia <= 50:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         #send_to_nextion(name, "g0")

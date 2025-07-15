@@ -19,7 +19,6 @@ def leer_serial(evento_itinerario):
         except UnicodeDecodeError:
             # Ignorar bytes que no se pueden decodificar
             continue
-        print(f"Datos recibidos: {dato_bytes} -> {dato}")  # Antes del if dato
         if dato:
             if dato == "7":
                 evento_itinerario.set()

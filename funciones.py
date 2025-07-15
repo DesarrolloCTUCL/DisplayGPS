@@ -69,10 +69,15 @@ def parse_gprmc(trama):
         print(f"Error al parsear GPRMC: {e}")
         return None
 
+def formatear_fecha(fecha_ddmmyyyy):
+    # Convierte '15/07/2025' a objeto datetime
+    dt = datetime.strptime(fecha_ddmmyyyy, "%d/%m/%Y")
+    # Retorna string en formato '2025-07-15'
+    return dt.strftime("%Y-%m-%d")
 
 def verificar_itinerario_actual(fecha_actual, hora_actual):
-    
-    codigo, itinerarios = cargar_desde_sqlite(fecha_actual)
+    fecha_sqlite = formatear_fecha(fecha_actual)
+    codigo, itinerarios = cargar_desde_sqlite(fecha_sqlite)
     for item in itinerarios:
         hora_inicio = item["hora_despacho"]
         hora_fin = item["hora_fin"]
@@ -82,5 +87,3 @@ def verificar_itinerario_actual(fecha_actual, hora_actual):
                 send_to_nextion(hora_fin, "t4")
                 send_to_nextion(item["recorrido"], "t6")
                 break
-
-            
