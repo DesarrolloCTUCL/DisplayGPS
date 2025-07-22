@@ -4,12 +4,12 @@ from datetime import datetime
 
 def obtener_chainpc_por_itinerario():
     """
-    Extrae cada itinerario con su recorrido, hora_despacho, hora_fin y los puntos chainpc filtrados
+    Extrae cada itinerario con su recorrido, hora_despacho, hora_fin, shift y los puntos chainpc filtrados
     por su horario. Retorna un diccionario estructurado por id_itinerario.
     """
     conn = sqlite3.connect('itinerarios.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT recorrido, hora_despacho, hora_fin, chainpc FROM itinerarios')
+    cursor.execute('SELECT recorrido, hora_despacho, hora_fin, chainpc, shift_id FROM itinerarios')
     filas = cursor.fetchall()
     conn.close()
 
@@ -17,7 +17,7 @@ def obtener_chainpc_por_itinerario():
     id_itinerario = 1
     fmt = "%H:%M:%S"
 
-    for recorrido, hora_despacho, hora_fin, chainpc_json in filas:
+    for recorrido, hora_despacho, hora_fin, chainpc_json, shift_id in filas:
         if not chainpc_json:
             continue
         try:
@@ -44,12 +44,14 @@ def obtener_chainpc_por_itinerario():
                     dentro = hora_punto_dt >= hora_despacho_dt or hora_punto_dt <= hora_fin_dt
 
                 if dentro:
+                    punto["datetime"] = datetime.now().isoformat()  # <- Agrega datetime si lo necesitas
                     puntos_filtrados.append(punto)
 
             itinerarios[id_itinerario] = {
                 "recorrido": recorrido,
                 "hora_despacho": hora_despacho,
                 "hora_fin": hora_fin,
+                "shift_id": shift_id,
                 "puntos": puntos_filtrados
             }
             id_itinerario += 1

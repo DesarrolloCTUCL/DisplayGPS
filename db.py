@@ -14,7 +14,8 @@ def guardar_en_sqlite(fecha, itinerario_codigo, itinerarios):
                 recorrido TEXT,
                 hora_despacho TEXT,
                 hora_fin TEXT,
-                chainpc TEXT
+                chainpc TEXT,
+                shift_id INTEGER
             )
         ''')
         # Elimina todos los registros con fecha distinta a la actual
@@ -32,17 +33,19 @@ def guardar_en_sqlite(fecha, itinerario_codigo, itinerarios):
                     punto["numero"] = 100 + idx  # O cualquier valor único o representativo
 
             chainpc_json = json.dumps(chainpc, ensure_ascii=False)
+            shift_id = item.get("turno", {}).get("shift_id")  # Aquí obtienes shift_id
 
             cursor.execute('''
-                INSERT INTO itinerarios (fecha, itinerario_codigo, recorrido, hora_despacho, hora_fin, chainpc)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO itinerarios (fecha, itinerario_codigo, recorrido, hora_despacho, hora_fin, chainpc, shift_id)
+                VALUES (?, ?, ?, ?, ?, ?,?)
             ''', (
                 fecha,
                 itinerario_codigo,
                 item.get("recorrido", ""),
                 item.get("hora_despacho", ""),
                 item.get("hora_fin", ""),
-                chainpc_json
+                chainpc_json,
+                shift_id
             ))
         conn.commit()
 
@@ -61,12 +64,13 @@ def cargar_desde_sqlite(fecha):
             recorrido TEXT,
             hora_despacho TEXT,
             hora_fin TEXT,
-            chainpc TEXT
+            chainpc TEXT,
+            shift_id INTEGER
         )
     ''')
 
     cursor.execute('''
-        SELECT itinerario_codigo, recorrido, hora_despacho, hora_fin, chainpc
+        SELECT itinerario_codigo, recorrido, hora_despacho, hora_fin, chainpc, shift_id
         FROM itinerarios WHERE fecha = ?
     ''', (fecha,))
     filas = cursor.fetchall()
@@ -87,9 +91,11 @@ def cargar_desde_sqlite(fecha):
             "recorrido": f[1],
             "hora_despacho": f[2],
             "hora_fin": f[3],
-            "chainpc": chainpc
+            "chainpc": chainpc,
+            "shift_id": f[5]  # Aquí incluyes shift_id
         })
     return codigo_itinerario, itinerarios
+
 
 def itinerarios_diferentes(locales, servidor):
     if len(locales) != len(servidor):

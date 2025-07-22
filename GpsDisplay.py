@@ -137,6 +137,7 @@ def iniciar_gps_display():
 
                             if itinerario_activo:
                                 #print(f"🧭 Itinerario {id_itin_activo} con rango horario {itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']} (Activo)")
+                                shift_id = itinerario_activo.get("shift_id")  # Obtén shift_id del itinerario activo
                                 puntos = itinerario_activo.get("puntos", [])
 
                                 # Mostrar primer punto de control solo cuando inicia o cambia el itinerario
@@ -170,7 +171,7 @@ def iniciar_gps_display():
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= radius:
+                                if distancia <= 800:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         #send_to_nextion(name, "g0")
@@ -191,13 +192,14 @@ def iniciar_gps_display():
 
                                         mensaje_mqtt = {
                                             "BusID": CLIENT_ID,
-                                            "fecha": parsed_data["fecha"],
-                                            "hora": parsed_data["hora"],
-                                            "punto_control": name,
+                                            "datetime": f"{parsed_data['fecha']} {parsed_data['hora']}",  # ej. '2025-07-18 14:35:22'
+                                            "punto_control_id": numero,
+                                            "punto_controlname": name,
+                                            "shift_id": shift_id,  # Aquí agregas shift_id
                                             "latitud": parsed_data["latitud"],
                                             "longitud": parsed_data["longitud"],
-                                            "velocidad_kmh": parsed_data["velocidad_kmh"],
-                                            "itinerario_id": id_itin_activo
+                                            "velocidad_kmh": parsed_data["velocidad_kmh"]
+                                            
                                         }
 
                                         mqtt_connection.publish(
