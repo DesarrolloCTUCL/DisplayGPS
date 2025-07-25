@@ -62,7 +62,7 @@ def iniciar_gps_display():
     while True:
         try:
             print("[Main] Sistema iniciado. Esperando comandos...")
-            send_to_nextion("Conectando...", "t2")
+            send_to_nextion("Espere.", "t2")
             connect_future = mqtt_connection.connect()
             connect_future.result(timeout=10)
             print("✅ Conectado a AWS IoT Core")
@@ -72,7 +72,7 @@ def iniciar_gps_display():
             break
         except Exception as e:
             print(f"❌ Error de conexión: {e}")
-            send_to_nextion("Sin conexión", "t2")
+            send_to_nextion("No señal", "t2")
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
 
@@ -171,7 +171,7 @@ def iniciar_gps_display():
                                     continue
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
-                                if distancia <= 800:
+                                if distancia <= radius:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
                                         #send_to_nextion(name, "g0")
