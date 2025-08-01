@@ -1,4 +1,16 @@
+# Ignorar cachés de Python
 __pycache__/
 *.pyc
 *.pyo
+
+# Ignorar archivos SQLite u otros .db
 *.db
+
+# Ignorar todos los archivos dentro de Certificados/
+Certificados/*
+
+# Pero incluir específicamente el root-CA.crt
+!Certificados/root-CA.crt
+
+# Ignorar el archivo de entorno
+.env

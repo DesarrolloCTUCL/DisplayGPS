@@ -1,5 +1,7 @@
 import socket
 import time
+import os
+from dotenv import load_dotenv
 from datetime import datetime,timedelta
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
@@ -8,20 +10,28 @@ import json
 from puntoscontrol import obtener_chainpc_por_itinerario
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
-from config import BUS_ID, radio, mqttpass, CERT
-
 from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual
 import threading
+
+
+# Cargar las variables desde el archivo .env
+load_dotenv()
+
+BUS_ID = int(os.getenv("BUS_ID"))
+RADIO = int(os.getenv("RADIO"))
+MQTT_ENDPOINT = os.getenv("MQTT_ENDPOINT")
+CERT_NAME = os.getenv("CERT_NAME")
+
 
 # Configuración del servidor de sockets
 HOST = '0.0.0.0'  # Escucha en todas las interfaces de red
 PORT = 8500       # Mismo puerto configurado en el Teltonika
 
 # Configuración de AWS IoT MQTT
-ENDPOINT = mqttpass  # Asegúrate de usar el endpoint correcto
-CLIENT_ID = str(BUS_ID)  # Usa un nombre único
-PATH_TO_CERT = f"/home/admin/DisplayGPS/Certificados/{CERT}.cert.pem"
-PATH_TO_KEY = f"/home/admin/DisplayGPS/Certificados/{CERT}.private.key"
+ENDPOINT = MQTT_ENDPOINT
+CLIENT_ID = str(BUS_ID)
+PATH_TO_CERT = f"/home/admin/DisplayGPS/Certificados/{CERT_NAME}certificate.pem.crt"
+PATH_TO_KEY = f"/home/admin/DisplayGPS/Certificados/{CERT_NAME}private.pem.key"
 PATH_TO_ROOT_CA = "/home/admin/DisplayGPS/Certificados/root-CA.crt"
 
 # Configuración de MQTT

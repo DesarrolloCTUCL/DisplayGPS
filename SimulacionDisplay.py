@@ -1,15 +1,20 @@
 import time
-from datetime import datetime, timedelta
 import threading
+import os
+from datetime import datetime, timedelta
 from puntoscontrol import obtener_chainpc_por_itinerario
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
-from config import BUS_ID
 from funciones import calcular_distancia, verificar_itinerario_actual
-
+from dotenv import load_dotenv
 gps_activo = False
 gps_lock = threading.Lock()
 puntos_notificados = set()
+
+# Cargar las variables desde el archivo .env
+load_dotenv()
+
+BUS_ID = int(os.getenv("BUS_ID"))
 
 def actualizar_hora_local():
     while True:
