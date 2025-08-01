@@ -1,9 +1,15 @@
 import requests
+import os
+from dotenv import load_dotenv
 from datetime import datetime
-from config import BUS_ID
 from ComandosNextion import send_to_nextion
 from db import guardar_en_sqlite, cargar_desde_sqlite, itinerarios_diferentes
 import time
+
+# Cargar las variables desde el archivo .env
+load_dotenv()
+
+BUS_ID = int(os.getenv("BUS_ID"))
 
 def itinerarios_diferentes(locales, servidor):
     if len(locales) != len(servidor):

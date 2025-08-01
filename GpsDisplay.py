@@ -6,11 +6,9 @@ from datetime import datetime,timedelta
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 import json
-#from control_points import control_points
-from puntoscontrol import obtener_chainpc_por_itinerario
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
-from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual
+from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual,obtener_chainpc_por_itinerario
 import threading
 
 

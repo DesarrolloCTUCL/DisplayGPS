@@ -2,10 +2,9 @@ import time
 import threading
 import os
 from datetime import datetime, timedelta
-from puntoscontrol import obtener_chainpc_por_itinerario
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
-from funciones import calcular_distancia, verificar_itinerario_actual
+from funciones import calcular_distancia, verificar_itinerario_actual,obtener_chainpc_por_itinerario
 from dotenv import load_dotenv
 gps_activo = False
 gps_lock = threading.Lock()
