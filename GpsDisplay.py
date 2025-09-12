@@ -70,7 +70,7 @@ def iniciar_gps_display():
     while True:
         try:
             print("[Main] Sistema iniciado. Esperando comandos...")
-            send_to_nextion("Espere.", "t2")
+            send_to_nextion("Espere", "g0")
             connect_future = mqtt_connection.connect()
             connect_future.result(timeout=10)
             print("✅ Conectado a AWS IoT Core")
@@ -79,8 +79,11 @@ def iniciar_gps_display():
             send_to_nextion(CLIENT_ID, "t2")
             break
         except Exception as e:
+            hora_local = datetime.now()
+            send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
             print(f"❌ Error de conexión: {e}")
-            send_to_nextion("No señal", "t2")
+            send_to_nextion(CLIENT_ID, "t2")
+            send_to_nextion("No señal", "g0")
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
 
