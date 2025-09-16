@@ -60,10 +60,13 @@ def actualizar_hora_local():
         hora_local = datetime.now()
         send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
         send_to_nextion(hora_local.strftime("%Y-%m-%d"), "t1")
+        send_to_nextion(CLIENT_ID, "t2")
         verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
         time.sleep(1)
 
 def iniciar_gps_display():
+    threading.Thread(target=actualizar_hora_local, daemon=True).start()
+
     # Conectar a AWS IoT con reintentos cada 5 segundos si falla
     ruta_iniciada = False
     ruta_anterior = None
@@ -76,13 +79,10 @@ def iniciar_gps_display():
             print("✅ Conectado a AWS IoT Core")
             obtener_datos_itinerario()
             last_sent_texts.clear()
-            send_to_nextion(CLIENT_ID, "t2")
             break
         except Exception as e:
             hora_local = datetime.now()
-            send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
-            print(f"❌ Error de conexión: {e}")
-            send_to_nextion(CLIENT_ID, "t2")
+            print(f"❌ Error de conexión: {e}")       
             send_to_nextion("No señal", "g0")
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
@@ -90,7 +90,6 @@ def iniciar_gps_display():
     TOPIC = f"buses/gps/{BUS_ID}"
 
     # Iniciar hilo para actualizar hora local
-    threading.Thread(target=actualizar_hora_local, daemon=True).start()
     puntos_notificados = set()
 
     # Iniciar el servidor de sockets
