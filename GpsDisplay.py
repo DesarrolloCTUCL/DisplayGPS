@@ -131,15 +131,14 @@ def iniciar_gps_display():
                                 hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
                                 hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
 
-                                # APLICAR MARGEN DE 10 MINUTOS
-                                margen = timedelta(minutes=10)
-                                hora_despacho_margen = hora_despacho_dt - margen
-                                hora_fin_margen = hora_fin_dt + margen
+                                # Margen de 10 minutos solo al final del itinerario
+                                margen_final = timedelta(minutes=8)
+                                hora_fin_margen = hora_fin_dt + margen_final
 
                                 if hora_despacho_dt <= hora_fin_dt:
-                                    activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_dt
+                                    activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_margen
                                 else:
-                                    activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_dt
+                                    activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_margen
 
                                 if activo:
                                     itinerario_activo = data
