@@ -131,18 +131,22 @@ def iniciar_gps_display():
                                 hora_despacho_dt = datetime.strptime(data["hora_despacho"], "%H:%M:%S")
                                 hora_fin_dt = datetime.strptime(data["hora_fin"], "%H:%M:%S")
 
-                                # Margen de 10 minutos solo al final del itinerario
-                                margen_final = timedelta(minutes=8)
+                                # Márgenes
+                                margen_inicio = timedelta(minutes=2)   # 2 min antes del inicio
+                                margen_final = timedelta(minutes=10)   # 10 min después del fin
+                                hora_despacho_margen = hora_despacho_dt - margen_inicio
                                 hora_fin_margen = hora_fin_dt + margen_final
 
+                                # Verificar si el itinerario está activo
                                 if hora_despacho_dt <= hora_fin_dt:
-                                    activo = hora_despacho_dt <= hora_actual_dt <= hora_fin_margen
-                                else:
-                                    activo = hora_actual_dt >= hora_despacho_dt or hora_actual_dt <= hora_fin_margen
+                                    activo = hora_despacho_margen <= hora_actual_dt <= hora_fin_margen
+                                else:  # itinerario que cruza medianoche
+                                    activo = hora_actual_dt >= hora_despacho_margen or hora_actual_dt <= hora_fin_margen
 
                                 if activo:
                                     itinerario_activo = data
                                     id_itin_activo = id_itin
+
 
                             if itinerario_activo:
                                 #print(f"🧭 Itinerario {id_itin_activo} con rango horario {itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']} (Activo)")
