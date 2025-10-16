@@ -67,6 +67,7 @@ def iniciar_gps_display():
     ruta_iniciada = False
     ruta_anterior = None
     ruta_activa_id = None  # ← NUEVA VARIABLE PARA CONTROLAR ESTADOS DE RUTA
+    esperando_ruta = False
 
     while True:
         try:
@@ -141,10 +142,15 @@ def iniciar_gps_display():
                                     id_itin_activo = id_itin
 
                             if itinerario_activo:
+                                nombre_recorrido = itinerario_activo.get("recorrido", "Recorrido sin nombre")
+                                hora_inicio = itinerario_activo.get("hora_despacho", "--:--:--")
+                                hora_fin = itinerario_activo.get("hora_fin", "--:--:--")
                                 # 🟢 INICIO DE RUTA
                                 if ruta_activa_id != id_itin_activo:
-                                    print(f"🟢 Ruta INICIADA: {id_itin_activo} ({itinerario_activo['hora_despacho']} - {itinerario_activo['hora_fin']})")
+                                    print(f"🟢 Ruta INICIADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {id_itin_activo})")
                                     ruta_activa_id = id_itin_activo
+                                    esperando_ruta = False  # 👈 Al iniciar ruta, reinicia bandera
+
 
                                 shift_id = itinerario_activo.get("shift_id")
                                 puntos = itinerario_activo.get("puntos", [])
@@ -164,17 +170,20 @@ def iniciar_gps_display():
                             else:
                                 # 🔴 FIN DE RUTA
                                 if ruta_activa_id is not None:
-                                    print(f"🔴 Ruta FINALIZADA: {ruta_activa_id}")
+                                    print(f"🔴 Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
                                     ruta_activa_id = None
 
-                                # ⏸ ESPERANDO PRÓXIMA RUTA
-                                if not ruta_iniciada:
+                                # ⏸ ESPERANDO PRÓXIMA RUTA (solo una vez)
+                                if not esperando_ruta:
                                     print("⏸ Esperando el inicio de la próxima ruta...")
+                                    esperando_ruta = True  # 👈 Se marca que ya se mostró
+
                                 send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
                                 send_to_nextion("--:--:--", "t5")
                                 ruta_iniciada = False
                                 ruta_anterior = None
                                 puntos = []
+
 
                             # --- Verificación de puntos de control ---
                             for punto in puntos:
