@@ -91,3 +91,24 @@ def reenviar_pendientes(mqtt_connection, topic):
     restantes = [m for m in pendientes if m not in enviados]
     with open(PENDIENTES_FILE, "w") as f:
         json.dump(restantes, f, indent=2)
+
+
+def publicar_mensaje(mqtt_connection, topic, mensaje):
+    """
+    Publica un mensaje en MQTT. 
+    Si hay pendientes, intenta enviarlos primero.
+    Si falla, guarda el mensaje actual y los pendientes no enviados.
+    """
+    # Intentar reenviar pendientes primero
+    reenviar_pendientes(mqtt_connection, topic)
+
+    try:
+        mqtt_connection.publish(
+            topic=topic,
+            payload=json.dumps(mensaje),
+            qos=mqtt.QoS.AT_LEAST_ONCE
+        )
+        print(f"📡 Publicado a MQTT: {mensaje}")
+    except Exception as e:
+        print(f"⚠️ Error al publicar MQTT: {e}")
+        guardar_pendiente(mensaje)

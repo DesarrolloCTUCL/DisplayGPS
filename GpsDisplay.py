@@ -12,7 +12,8 @@ from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actu
 from mqtt_auth import (
     crear_conexion_mqtt,
     guardar_pendiente,
-    reenviar_pendientes
+    reenviar_pendientes,
+    publicar_mensaje
 )
 
 import threading
@@ -230,16 +231,7 @@ def iniciar_gps_display():
                                             "velocidad_kmh": parsed_data["velocidad_kmh"]
                                         }
 
-                                        try:
-                                            mqtt_connection.publish(
-                                                topic=TOPIC,
-                                                payload=json.dumps(mensaje_mqtt),
-                                                qos=mqtt.QoS.AT_LEAST_ONCE
-                                            )
-                                            print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
-                                        except Exception as e:
-                                            print(f"⚠️ Error al publicar MQTT: {e}")
-                                            guardar_pendiente(mensaje_mqtt)
+                                        publicar_mensaje(mqtt_connection, TOPIC, mensaje_mqtt)
 
                                         puntos_notificados.add(name)
                                     break
@@ -254,3 +246,6 @@ def iniciar_gps_display():
     except KeyboardInterrupt:
         print("\nCerrando servidor y conexión con Nextion")
         nextion.close()
+
+
+
