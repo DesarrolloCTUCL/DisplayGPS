@@ -55,6 +55,7 @@ def actualizar_hora_local():
         time.sleep(1)
 
 def iniciar_gps_display():
+    global fecha_ultima_actualizacion
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
 
     # Conexión a AWS IoT con reintentos
