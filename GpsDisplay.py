@@ -9,6 +9,12 @@ import json
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
 from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual, obtener_chainpc_por_itinerario
+from mqtt_auth import (
+    crear_conexion_mqtt,
+    guardar_pendiente,
+    reenviar_pendientes
+)
+
 import threading
 
 # Cargar variables de entorno
@@ -16,38 +22,26 @@ load_dotenv()
 
 BUS_ID = int(os.getenv("BUS_ID"))
 RADIO = int(os.getenv("RADIO"))
-MQTT_ENDPOINT = os.getenv("MQTT_ENDPOINT")
-CERT_NAME = os.getenv("CERT_NAME")
+
 
 # Configuración de servidor de sockets
 HOST = '0.0.0.0'
 PORT = 8500
 
-# Configuración de AWS IoT MQTT
-ENDPOINT = MQTT_ENDPOINT
-CLIENT_ID = str(BUS_ID)
-PATH_TO_CERT = f"/home/admin/DisplayGPS/Certificados/{CERT_NAME}certificate.pem.crt"
-PATH_TO_KEY = f"/home/admin/DisplayGPS/Certificados/{CERT_NAME}private.pem.key"
-PATH_TO_ROOT_CA = "/home/admin/DisplayGPS/Certificados/root-CA.crt"
 
-event_loop_group = io.EventLoopGroup(1)
-host_resolver = io.DefaultHostResolver(event_loop_group)
-client_bootstrap = io.ClientBootstrap(event_loop_group, host_resolver)
-
-mqtt_connection = mqtt_connection_builder.mtls_from_path(
-    endpoint=ENDPOINT,
-    cert_filepath=PATH_TO_CERT,
-    pri_key_filepath=PATH_TO_KEY,
-    client_bootstrap=client_bootstrap,
-    ca_filepath=PATH_TO_ROOT_CA,
-    client_id=CLIENT_ID,
-    clean_session=False,
-    keep_alive_secs=30,
-)
+mqtt_connection, CLIENT_ID = crear_conexion_mqtt()
+TOPIC = f"buses/gps/{BUS_ID}"
 
 # Variables globales
 gps_activo = False
 gps_lock = threading.Lock()
+fecha_ultima_actualizacion = datetime.now().date()  # ← Inicialización
+
+
+import json
+from pathlib import Path
+
+
 
 def actualizar_hora_local():
     while True:
@@ -66,7 +60,7 @@ def iniciar_gps_display():
     # Conexión a AWS IoT con reintentos
     ruta_iniciada = False
     ruta_anterior = None
-    ruta_activa_id = None  # ← NUEVA VARIABLE PARA CONTROLAR ESTADOS DE RUTA
+    ruta_activa_id = None
     esperando_ruta = False
 
     while True:
@@ -77,6 +71,7 @@ def iniciar_gps_display():
             connect_future.result(timeout=10)
             print("✅ Conectado a AWS IoT Core")
             obtener_datos_itinerario()
+            reenviar_pendientes(mqtt_connection, TOPIC)
             last_sent_texts.clear()
             break
         except Exception as e:
@@ -85,7 +80,7 @@ def iniciar_gps_display():
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
 
-    TOPIC = f"buses/gps/{BUS_ID}"
+    
     puntos_notificados = set()
 
     try:
@@ -102,6 +97,20 @@ def iniciar_gps_display():
                         if not data:
                             break
 
+                        # 🟡 Verificar cambio de día
+                        fecha_actual = datetime.now().date()
+                        if fecha_actual != fecha_ultima_actualizacion:
+                            print(f"📅 Cambio de día detectado ({fecha_ultima_actualizacion} → {fecha_actual}). Refrescando itinerarios...")
+                            obtener_datos_itinerario()
+                            fecha_ultima_actualizacion = fecha_actual
+
+                            # Reiniciar variables de control de rutas
+                            ruta_iniciada = False
+                            ruta_anterior = None
+                            ruta_activa_id = None
+                            esperando_ruta = False
+                            puntos_notificados.clear()
+
                         trama = data.decode().strip()
                         parsed_data = parse_gprmc(trama)
                         if parsed_data:
@@ -109,7 +118,7 @@ def iniciar_gps_display():
                             hora_local = datetime.now()
                             diferencia = abs((hora_local - hora_gps).total_seconds())
                             if diferencia > 3:
-                                continue  # Ignorar tramas atrasadas
+                                continue
 
                             with gps_lock:
                                 gps_activo = True
@@ -128,7 +137,7 @@ def iniciar_gps_display():
                                 hora_fin_dt = datetime.strptime(data_itin["hora_fin"], "%H:%M:%S")
 
                                 margen_inicio = timedelta(minutes=2)
-                                margen_final = timedelta(minutes=10)
+                                margen_final = timedelta(minutes=8)
                                 hora_despacho_margen = hora_despacho_dt - margen_inicio
                                 hora_fin_margen = hora_fin_dt + margen_final
 
@@ -145,12 +154,11 @@ def iniciar_gps_display():
                                 nombre_recorrido = itinerario_activo.get("recorrido", "Recorrido sin nombre")
                                 hora_inicio = itinerario_activo.get("hora_despacho", "--:--:--")
                                 hora_fin = itinerario_activo.get("hora_fin", "--:--:--")
-                                # 🟢 INICIO DE RUTA
+
                                 if ruta_activa_id != id_itin_activo:
                                     print(f"🟢 Ruta INICIADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {id_itin_activo})")
                                     ruta_activa_id = id_itin_activo
-                                    esperando_ruta = False  # 👈 Al iniciar ruta, reinicia bandera
-
+                                    esperando_ruta = False
 
                                 shift_id = itinerario_activo.get("shift_id")
                                 puntos = itinerario_activo.get("puntos", [])
@@ -168,15 +176,13 @@ def iniciar_gps_display():
                                     ruta_anterior = id_itin_activo
 
                             else:
-                                # 🔴 FIN DE RUTA
                                 if ruta_activa_id is not None:
                                     print(f"🔴 Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
                                     ruta_activa_id = None
 
-                                # ⏸ ESPERANDO PRÓXIMA RUTA (solo una vez)
                                 if not esperando_ruta:
                                     print("⏸ Esperando el inicio de la próxima ruta...")
-                                    esperando_ruta = True  # 👈 Se marca que ya se mostró
+                                    esperando_ruta = True
 
                                 send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
                                 send_to_nextion("--:--:--", "t5")
@@ -184,8 +190,7 @@ def iniciar_gps_display():
                                 ruta_anterior = None
                                 puntos = []
 
-
-                            # --- Verificación de puntos de control ---
+                            # Verificación de puntos de control
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
                                 lat = punto.get("lat")
@@ -199,7 +204,7 @@ def iniciar_gps_display():
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
                                 if distancia <= radius:
                                     if name not in puntos_notificados:
-                                        print(f"Punto de control alcanzado: {name}, enviando comando de audio...")
+                                        print(f"Punto de control alcanzado: {name}, Reproduciendo...")
                                         send_to_nextionPlay(0, int(numero) - 1)
 
                                         index_actual = next((i for i, p in enumerate(puntos) if p.get("numero") == numero), None)
@@ -224,12 +229,17 @@ def iniciar_gps_display():
                                             "velocidad_kmh": parsed_data["velocidad_kmh"]
                                         }
 
-                                        mqtt_connection.publish(
-                                            topic=TOPIC,
-                                            payload=json.dumps(mensaje_mqtt),
-                                            qos=mqtt.QoS.AT_LEAST_ONCE
-                                        )
-                                        print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
+                                        try:
+                                            mqtt_connection.publish(
+                                                topic=TOPIC,
+                                                payload=json.dumps(mensaje_mqtt),
+                                                qos=mqtt.QoS.AT_LEAST_ONCE
+                                            )
+                                            print(f"📡 Publicado a MQTT: {mensaje_mqtt}")
+                                        except Exception as e:
+                                            print(f"⚠️ Error al publicar MQTT: {e}")
+                                            guardar_pendiente(mensaje_mqtt)
+
                                         puntos_notificados.add(name)
                                     break
                                 else:

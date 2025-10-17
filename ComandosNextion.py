@@ -39,7 +39,6 @@ def send_to_nextion(text, text_id):
 def send_to_nextionPlay(audio_index, va1_val):
     if nextion.is_open:
         command = f'play {audio_index},{va1_val},0'
-        print(f"Enviando comando al Nextion: {command}")
         nextion.write(command.encode('utf-8') + b"\xFF\xFF\xFF")
 
 
