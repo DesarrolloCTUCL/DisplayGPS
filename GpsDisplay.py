@@ -210,15 +210,22 @@ def iniciar_gps_display():
                                         send_to_nextionPlay(0, int(numero) - 1)
 
                                         index_actual = next((i for i, p in enumerate(puntos) if p.get("numero") == numero), None)
-                                        if index_actual is not None and index_actual + 1 < len(puntos):
-                                            siguiente_punto = puntos[index_actual + 1]
-                                            siguiente_nombre = siguiente_punto.get("name", "Siguiente")
-                                            siguiente_hora = siguiente_punto.get("hora", "--:--:--")
-                                            send_to_nextion(siguiente_nombre, "g0")
-                                            send_to_nextion(siguiente_hora, "t5")
-                                        else:
-                                            send_to_nextion("FIN", "g0")
-                                            send_to_nextion("--:--:--", "t5")
+                                        if index_actual is not None:
+                                            # Si es el último punto de control
+                                            if index_actual + 1 >= len(puntos):
+                                                send_to_nextion("FIN", "g0")
+                                                send_to_nextion("--:--:--", "t5")
+                                                print(f"✅ Último punto de control marcado. Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
+                                                ruta_activa_id = None
+                                                ruta_iniciada = False
+                                                esperando_ruta = True
+                                                puntos_notificados.clear()
+                                            else:
+                                                siguiente_punto = puntos[index_actual + 1]
+                                                siguiente_nombre = siguiente_punto.get("name", "Siguiente")
+                                                siguiente_hora = siguiente_punto.get("hora", "--:--:--")
+                                                send_to_nextion(siguiente_nombre, "g0")
+                                                send_to_nextion(siguiente_hora, "t5")
 
                                         mensaje_mqtt = {
                                             "BusID": CLIENT_ID,
