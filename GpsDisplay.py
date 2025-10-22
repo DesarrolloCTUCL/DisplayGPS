@@ -198,7 +198,7 @@ def iniciar_gps_display():
                                 lat = punto.get("lat")
                                 lon = punto.get("long")
                                 numero = punto.get("numero")
-                                radius = punto.get("radius", 50)
+                                radius = punto.get("radius", 60)
 
                                 if numero is None:
                                     continue
