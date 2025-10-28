@@ -226,7 +226,7 @@ def iniciar_gps_display():
                                                 send_to_nextion("FIN", "g0")
                                                 send_to_nextion("--:--:--", "t5")
                                                 print(f"✅ Último punto de control marcado. Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
-                                                ruta_activa_id = None
+                                                #ruta_activa_id = None
                                                 ruta_iniciada = False
                                                 esperando_ruta = True
                                                 ruta_finalizada=True
