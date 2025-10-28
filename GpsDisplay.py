@@ -64,6 +64,7 @@ def iniciar_gps_display():
     ruta_anterior = None
     ruta_activa_id = None
     esperando_ruta = False
+    ruta_finalizada = False
 
     while True:
         try:
@@ -89,7 +90,7 @@ def iniciar_gps_display():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             server.bind((HOST, PORT))
             server.listen()
-            print(f"Esperando conexiones en {HOST}:{PORT}...")
+            print(f"Esperando señal GPS")
 
             while True:
                 conn, addr = server.accept()
@@ -151,13 +152,15 @@ def iniciar_gps_display():
                                 if activo:
                                     itinerario_activo = data_itin
                                     id_itin_activo = id_itin
+                                    if ruta_activa_id != id_itin_activo:
+                                        ruta_finalizada = False
 
-                            if itinerario_activo:
+                            if itinerario_activo and ruta_finalizada==False:
                                 nombre_recorrido = itinerario_activo.get("recorrido", "Recorrido sin nombre")
                                 hora_inicio = itinerario_activo.get("hora_despacho", "--:--:--")
                                 hora_fin = itinerario_activo.get("hora_fin", "--:--:--")
 
-                                if ruta_activa_id != id_itin_activo:
+                                if ruta_activa_id != id_itin_activo and ruta_finalizada==False:
                                     print(f"🟢 Ruta INICIADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {id_itin_activo})")
                                     ruta_activa_id = id_itin_activo
                                     esperando_ruta = False
@@ -177,10 +180,17 @@ def iniciar_gps_display():
                                     ruta_iniciada = True
                                     ruta_anterior = id_itin_activo
 
-                            else:
-                                if ruta_activa_id is not None:
+                            elif itinerario_activo and ruta_finalizada==True:
+                                print(f"🔴 Ruta FINALIZADA ultimo punto de control")
+                                send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
+                                send_to_nextion("--:--:--", "t5")
+                             
+                            elif itinerario_activo is None:
+
+                                if ruta_activa_id is not None or ruta_finalizada==True:
                                     print(f"🔴 Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
                                     ruta_activa_id = None
+                              
 
                                 if not esperando_ruta:
                                     print("⏸ Esperando el inicio de la próxima ruta...")
@@ -219,6 +229,7 @@ def iniciar_gps_display():
                                                 ruta_activa_id = None
                                                 ruta_iniciada = False
                                                 esperando_ruta = True
+                                                ruta_finalizada=True
                                                 puntos_notificados.clear()
                                             else:
                                                 siguiente_punto = puntos[index_actual + 1]
