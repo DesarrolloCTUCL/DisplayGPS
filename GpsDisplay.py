@@ -65,6 +65,7 @@ def iniciar_gps_display():
     ruta_activa_id = None
     esperando_ruta = False
     ruta_finalizada = False
+    ruta_notificada = False 
 
     while True:
         try:
@@ -112,6 +113,8 @@ def iniciar_gps_display():
                             ruta_anterior = None
                             ruta_activa_id = None
                             esperando_ruta = False
+                            ruta_finalizada= False
+                            ruta_notificada=False
                             puntos_notificados.clear()
 
                         trama = data.decode().strip()
@@ -154,6 +157,7 @@ def iniciar_gps_display():
                                     id_itin_activo = id_itin
                                     if ruta_activa_id != id_itin_activo:
                                         ruta_finalizada = False
+                                        ruta_notificada = False
 
                             if itinerario_activo and ruta_finalizada==False:
                                 nombre_recorrido = itinerario_activo.get("recorrido", "Recorrido sin nombre")
@@ -182,7 +186,9 @@ def iniciar_gps_display():
 
                             elif itinerario_activo and ruta_finalizada==True:
                                 if not esperando_ruta:
-                                    print(f"🔴 Ruta FINALIZADA ultimo punto de control")
+                                    if not ruta_notificada:
+                                        print(f"🔴 Ruta FINALIZADA ultimo punto de control")
+                                        ruta_notificada=True
                                     print("⏸ Esperando el inicio de la próxima ruta...")
                                     send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
                                     send_to_nextion("--:--:--", "t5")
@@ -190,9 +196,11 @@ def iniciar_gps_display():
                              
                             elif itinerario_activo is None:
 
-                                if ruta_activa_id is not None or ruta_finalizada==True:
+                                if (ruta_activa_id is not None or ruta_finalizada) and not ruta_notificada:
                                     print(f"🔴 Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
                                     ruta_activa_id = None
+                                    ruta_notificada = True
+                                    ruta_finalizada = True
                               
 
                                 if not esperando_ruta:
@@ -205,6 +213,8 @@ def iniciar_gps_display():
                                 ruta_anterior = None
                                 puntos = []
 
+                            if ruta_finalizada:
+                                continue
                             # Verificación de puntos de control
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
@@ -231,7 +241,7 @@ def iniciar_gps_display():
                                                 print(f"✅ Último punto de control marcado. Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
                                                 #ruta_activa_id = None
                                                 ruta_iniciada = False
-                                                esperando_ruta = True
+                                                esperando_ruta = False
                                                 ruta_finalizada=True
                                                 puntos_notificados.clear()
                                             else:
