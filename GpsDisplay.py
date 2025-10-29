@@ -168,7 +168,7 @@ def iniciar_gps_display():
                                 shift_id = itinerario_activo.get("shift_id")
                                 puntos = itinerario_activo.get("puntos", [])
 
-                                if not ruta_iniciada or ruta_anterior != id_itin_activo:
+                                if (not ruta_iniciada or ruta_anterior != id_itin_activo) and not ruta_finalizada:
                                     print(f"🔁 Ruta iniciada = {ruta_iniciada}, anterior = {ruta_anterior}, actual = {id_itin_activo}")
                                     if puntos:
                                         primer_punto = puntos[0]
@@ -181,9 +181,12 @@ def iniciar_gps_display():
                                     ruta_anterior = id_itin_activo
 
                             elif itinerario_activo and ruta_finalizada==True:
-                                print(f"🔴 Ruta FINALIZADA ultimo punto de control")
-                                send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
-                                send_to_nextion("--:--:--", "t5")
+                                if not esperando_ruta:
+                                    print(f"🔴 Ruta FINALIZADA ultimo punto de control")
+                                    print("⏸ Esperando el inicio de la próxima ruta...")
+                                    send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
+                                    send_to_nextion("--:--:--", "t5")
+                                    esperando_ruta = True
                              
                             elif itinerario_activo is None:
 
