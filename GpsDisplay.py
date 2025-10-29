@@ -243,6 +243,7 @@ def iniciar_gps_display():
                                                 ruta_iniciada = False
                                                 esperando_ruta = False
                                                 ruta_finalizada=True
+                                                ruta_anterior = ruta_activa_id
                                                 puntos_notificados.clear()
                                             else:
                                                 siguiente_punto = puntos[index_actual + 1]
