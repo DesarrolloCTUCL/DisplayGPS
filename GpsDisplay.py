@@ -233,7 +233,6 @@ def iniciar_gps_display():
                                     if not ruta_notificada:
                                         print(f"🔴 Ruta FINALIZADA ultimo punto de control")
                                         ruta_notificada=True
-                                    print("⏸ Esperando el inicio de la próxima ruta...")
                                     manejar_espera_proxima_ruta(ruta_anterior)
                                     send_to_nextion("--:--:--", "t5")
                                     esperando_ruta = True
