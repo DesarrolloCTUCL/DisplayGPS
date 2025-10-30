@@ -55,6 +55,47 @@ def actualizar_hora_local():
         verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
         time.sleep(1)
 
+def manejar_espera_proxima_ruta(ruta_anterior):
+    print("⏸ Esperando el inicio de la próxima ruta")
+
+    # Obtener turnos disponibles
+    turnos = obtener_chainpc_por_itinerario()
+    ids_ordenados = sorted(turnos.keys(), key=lambda x: int(x))
+    print(f"🧩 Turnos disponibles: {ids_ordenados}")
+    print(f"🧠 Ruta anterior: {ruta_anterior}")
+
+    # Determinar la siguiente ruta
+    if ruta_anterior is None:
+        # Si no hay ruta anterior, tomar la primera del día
+        siguiente_id = ids_ordenados[0] if ids_ordenados else None
+    else:
+        try:
+            indice_actual = ids_ordenados.index(ruta_anterior)
+            if indice_actual + 1 < len(ids_ordenados):
+                siguiente_id = ids_ordenados[indice_actual + 1]
+            else:
+                siguiente_id = None
+        except ValueError:
+            siguiente_id = ids_ordenados[0] if ids_ordenados else None
+
+    # Preparar mensaje para Nextion
+    if siguiente_id:
+        siguiente_ruta = turnos[siguiente_id]
+        prox_nombre = siguiente_ruta.get("recorrido", "Ruta siguiente")
+        prox_inicio = siguiente_ruta.get("hora_despacho", "--:--:--")
+        prox_fin = siguiente_ruta.get("hora_fin", "--:--:--")
+
+        print(f"Proxima ruta: {prox_inicio}")               
+        send_to_nextion(f"{prox_inicio}", "t3")
+        send_to_nextion(f"{prox_fin}", "t4")
+        send_to_nextion(f"Proxima ruta: {prox_inicio}", "g0")
+        send_to_nextion(f"{prox_nombre}", "t6")
+    else:
+        print("✅ No hay más rutas programadas para hoy.")
+        send_to_nextion("FIN DE ITINERARIOS", "t6")
+
+
+
 def iniciar_gps_display():
     global fecha_ultima_actualizacion
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
@@ -142,8 +183,8 @@ def iniciar_gps_display():
                                 hora_despacho_dt = datetime.strptime(data_itin["hora_despacho"], "%H:%M:%S")
                                 hora_fin_dt = datetime.strptime(data_itin["hora_fin"], "%H:%M:%S")
 
-                                margen_inicio = timedelta(minutes=2)
-                                margen_final = timedelta(minutes=8)
+                                margen_inicio = timedelta(minutes=2)  #Parametro de configuracion
+                                margen_final = timedelta(minutes=8)  #Parametro de configuracion
                                 hora_despacho_margen = hora_despacho_dt - margen_inicio
                                 hora_fin_margen = hora_fin_dt + margen_final
 
@@ -180,6 +221,9 @@ def iniciar_gps_display():
                                         hora_prog = primer_punto.get("hora", "--:--:--")
                                         send_to_nextion(nombre, "g0")
                                         send_to_nextion(hora_prog, "t5")
+                                        send_to_nextion(hora_inicio, "t3")
+                                        send_to_nextion(hora_fin, "t4")
+                                        send_to_nextion(nombre_recorrido, "t6")
                                         print(f"🟢 Mostrando primer punto de control al iniciar ruta: {nombre}")
                                     ruta_iniciada = True
                                     ruta_anterior = id_itin_activo
@@ -190,7 +234,7 @@ def iniciar_gps_display():
                                         print(f"🔴 Ruta FINALIZADA ultimo punto de control")
                                         ruta_notificada=True
                                     print("⏸ Esperando el inicio de la próxima ruta...")
-                                    send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
+                                    manejar_espera_proxima_ruta(ruta_anterior)
                                     send_to_nextion("--:--:--", "t5")
                                     esperando_ruta = True
                              
@@ -202,12 +246,10 @@ def iniciar_gps_display():
                                     ruta_notificada = True
                                     ruta_finalizada = True
                               
-
                                 if not esperando_ruta:
-                                    print("⏸ Esperando el inicio de la próxima ruta...")
+                                    manejar_espera_proxima_ruta(ruta_anterior)
                                     esperando_ruta = True
-
-                                send_to_nextion("ESPERANDO PRÓXIMA RUTA", "g0")
+                               
                                 send_to_nextion("--:--:--", "t5")
                                 ruta_iniciada = False
                                 ruta_anterior = None
