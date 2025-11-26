@@ -9,6 +9,7 @@ import time
 # Cargar las variables desde el archivo .env
 load_dotenv()
 BUS_ID = int(os.getenv("BUS_ID"))
+BUS_BD = int(os.gotenv("BUS_DB"))
 
 def itinerarios_diferentes(locales, servidor):
     if len(locales) != len(servidor):
@@ -63,7 +64,7 @@ def obtener_datos_itinerario():
         return  # ✅ Salimos porque ya usamos datos locales válidos
 
     # 🌐 Si no hay datos locales para hoy, intentamos descargarlos del servidor
-    url = f"https://www.ctucloja.com/api/despacho_display/bus/{BUS_ID}/itinerarios?date={fecha_actual}"
+    url = f"https://www.ctucloja.com/api/despacho_display/bus/{BUS_BD}/itinerarios?date={fecha_actual}"
     codigo_servidor = None
     itinerarios_servidor = None
 
