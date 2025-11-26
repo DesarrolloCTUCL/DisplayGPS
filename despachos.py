@@ -9,7 +9,7 @@ import time
 # Cargar las variables desde el archivo .env
 load_dotenv()
 BUS_ID = int(os.getenv("BUS_ID"))
-BUS_BD = int(os.gotenv("BUS_DB"))
+BUS_BD = int(os.getenv("BUS_DB"))
 
 def itinerarios_diferentes(locales, servidor):
     if len(locales) != len(servidor):
