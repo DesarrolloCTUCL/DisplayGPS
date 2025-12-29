@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from math import radians, sin, cos, sqrt, atan2
 from db import cargar_desde_sqlite 
 from ComandosNextion import send_to_nextion,send_to_nextionPlay,nextion,last_sent_texts
+from ui_bus import ui_queue
+
 
 # Función para calcular distancia entre dos coordenadas (Haversine)
 def calcular_distancia(lat1, lon1, lat2, lon2):
@@ -85,9 +87,20 @@ def verificar_itinerario_actual(fecha_actual, hora_actual):
         hora_fin = item["hora_fin"]
         if hora_inicio and hora_fin:
             if hora_inicio <= hora_actual <= hora_fin:
-                send_to_nextion(hora_inicio, "t3")
-                send_to_nextion(hora_fin, "t4")
-                send_to_nextion(item["recorrido"], "t6")
+
+                ui_queue.put({
+                        "type": "hora_inicio",
+                        "hora_inicio": hora_inicio
+                                        })
+                ui_queue.put({
+                        "type": "hora_fin",
+                        "hora_fin": hora_fin
+                                        })
+                ui_queue.put({
+                        "type": "ruta",
+                        "ruta": item["recorrido"]
+                                        })
+                
                 break
 
 
