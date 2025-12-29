@@ -5,10 +5,8 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
-from ui_bus import ui_queue
-
 import json
-from ComandosNextion import  send_to_nextionPlay, nextion, last_sent_texts
+from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
 from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual, obtener_chainpc_por_itinerario
 from mqtt_auth import (
@@ -48,31 +46,14 @@ from pathlib import Path
 
 def actualizar_hora_local():
     while True:
+        with gps_lock:
+            activo = gps_activo
         hora_local = datetime.now()
-
-        ui_queue.put({
-        "type": "hora",
-        "hora": f"🕒 {hora_local.strftime('%H:%M:%S')}🟡"
-        })
-
-        ui_queue.put({
-            "type": "fecha",
-            "fecha": f"📅 {hora_local.strftime('%d/%m/%Y')}"
-        })
-
-        ui_queue.put({
-            "type": "bus",
-            "bus": f"🚌 BUS: RT{CLIENT_ID}"
-        })
-
-
-        verificar_itinerario_actual(
-            hora_local.strftime("%d/%m/%Y"),
-            hora_local.strftime("%H:%M:%S")
-        )
-
+        send_to_nextion(hora_local.strftime("%H:%M:%S"), "t0")
+        send_to_nextion(hora_local.strftime("%Y-%m-%d"), "t1")
+        send_to_nextion(CLIENT_ID, "t2")
+        verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
         time.sleep(1)
-
 
 def manejar_espera_proxima_ruta(ruta_anterior):
     print("⏸ Esperando el inicio de la próxima ruta")
@@ -104,34 +85,15 @@ def manejar_espera_proxima_ruta(ruta_anterior):
         prox_inicio = siguiente_ruta.get("hora_despacho", "--:--:--")
         prox_fin = siguiente_ruta.get("hora_fin", "--:--:--")
 
-        print(f"Proxima ruta: {prox_inicio}")   
-        ui_queue.put({
-            "type": "hora_inicio",
-            "hora_inicio": prox_inicio
-        }) 
-        
-        ui_queue.put({
-            "type": "hora_fin",
-            "hora_fin": prox_fin
-        }) 
-    
-        ui_queue.put({
-            "type": "ruta",
-            "ruta": f"Próxima ruta: {prox_inicio}"
-        })
-
-        
-        ui_queue.put({
-            "type": "punto",
-            "punto": prox_nombre
-        }) 
-        
+        print(f"Proxima ruta: {prox_inicio}")               
+        send_to_nextion(f"{prox_inicio}", "t3")
+        send_to_nextion(f"{prox_fin}", "t4")
+        send_to_nextion(f"Proxima ruta: {prox_inicio}", "g0")
+        send_to_nextion(f"{prox_nombre}", "t6")
     else:
         print("✅ No hay más rutas programadas para hoy.")
-        ui_queue.put({
-            "type": "punto",
-            "punto": "FIN DE ITINERARIOS"
-        }) 
+        send_to_nextion("FIN DE ITINERARIOS", "t6")
+
 
 
 def iniciar_gps_display():
@@ -149,10 +111,7 @@ def iniciar_gps_display():
     while True:
         try:
             print("[Main] Sistema iniciado. Esperando comandos...")
-            ui_queue.put({
-            "type": "ruta",
-            "ruta": "Bienvenido, Espere"
-        })  
+            send_to_nextion("Espere", "g0")
             connect_future = mqtt_connection.connect()
             connect_future.result(timeout=10)
             print("✅ Conectado a AWS IoT Core")
@@ -162,10 +121,7 @@ def iniciar_gps_display():
             break
         except Exception as e:
             print(f"❌ Error de conexión: {e}")
-            ui_queue.put({
-                "type": "punto",
-                "punto": "NO SEÑAL"
-        }) 
+            send_to_nextion("No señal", "g0")
             print("🔄 Reintentando en 5 segundos...")
             time.sleep(5)
 
@@ -177,6 +133,7 @@ def iniciar_gps_display():
             server.bind((HOST, PORT))
             server.listen()
             print(f"Esperando señal GPS")
+
             while True:
                 conn, addr = server.accept()
                 with conn:
@@ -209,10 +166,12 @@ def iniciar_gps_display():
                             diferencia = abs((hora_local - hora_gps).total_seconds())
                             if diferencia > 3:
                                 continue
+
                             with gps_lock:
                                 gps_activo = True
-                        
-                 
+
+                            send_to_nextion(parsed_data['fecha'], "t1")
+                            send_to_nextion(parsed_data['hora'], "t0")
                             verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
 
@@ -258,40 +217,16 @@ def iniciar_gps_display():
                                     print(f"🔁 Ruta iniciada = {ruta_iniciada}, anterior = {ruta_anterior}, actual = {id_itin_activo}")
                                     if puntos:
                                         primer_punto = puntos[0]
-
                                         nombre = primer_punto.get("name", "Inicio")
                                         hora_prog = primer_punto.get("hora", "--:--:--")
-                                        # ================= TKINTER =================
-                                        ui_queue.put({
-                                            "type": "punto",
-                                            "punto": nombre
-                                        })
-
-                                        ui_queue.put({
-                                            "type": "hora_pc",
-                                            "hora_pc": hora_prog
-                                        })
-
-                                        ui_queue.put({
-                                            "type": "hora_inicio",
-                                            "hora_inicio": hora_inicio
-                                        })
-
-                                        ui_queue.put({
-                                            "type": "hora_fin",
-                                            "hora_fin": hora_fin
-                                        })
-
-                                        ui_queue.put({
-                                            "type": "ruta",
-                                            "ruta": nombre_recorrido
-                                        })
-
+                                        send_to_nextion(nombre, "g0")
+                                        send_to_nextion(hora_prog, "t5")
+                                        send_to_nextion(hora_inicio, "t3")
+                                        send_to_nextion(hora_fin, "t4")
+                                        send_to_nextion(nombre_recorrido, "t6")
                                         print(f"🟢 Mostrando primer punto de control al iniciar ruta: {nombre}")
-
                                     ruta_iniciada = True
                                     ruta_anterior = id_itin_activo
-
 
                             elif itinerario_activo and ruta_finalizada==True:
                                 if not esperando_ruta:
@@ -299,11 +234,7 @@ def iniciar_gps_display():
                                         print(f"🔴 Ruta FINALIZADA ultimo punto de control")
                                         ruta_notificada=True
                                     manejar_espera_proxima_ruta(ruta_anterior)
-                                    ui_queue.put({
-                                            "type": "hora_pc",
-                                            "hora_pc": "--:--:--"
-                                        })
-
+                                    send_to_nextion("--:--:--", "t5")
                                     esperando_ruta = True
                              
                             elif itinerario_activo is None:
@@ -318,11 +249,7 @@ def iniciar_gps_display():
                                     manejar_espera_proxima_ruta(ruta_anterior)
                                     esperando_ruta = True
                                
-                               
-                                ui_queue.put({
-                                            "type": "hora_pc",
-                                            "hora_pc": "--:--:--"
-                                        })
+                                send_to_nextion("--:--:--", "t5")
                                 ruta_iniciada = False
                                 ruta_anterior = None
                                 puntos = []
@@ -350,16 +277,8 @@ def iniciar_gps_display():
                                         if index_actual is not None:
                                             # Si es el último punto de control
                                             if index_actual + 1 >= len(puntos):
-                                             
-                                                ui_queue.put({
-                                                    "type": "punto",
-                                                    "punto": "FIN"
-                                                })
-                                              
-                                                ui_queue.put({
-                                                    "type": "hora_pc",
-                                                    "hora_pc": "--:--:--"
-                                                })
+                                                send_to_nextion("FIN", "g0")
+                                                send_to_nextion("--:--:--", "t5")
                                                 print(f"✅ Último punto de control marcado. Ruta FINALIZADA: {nombre_recorrido} | Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})")
                                                 #ruta_activa_id = None
                                                 ruta_iniciada = False
@@ -371,17 +290,8 @@ def iniciar_gps_display():
                                                 siguiente_punto = puntos[index_actual + 1]
                                                 siguiente_nombre = siguiente_punto.get("name", "Siguiente")
                                                 siguiente_hora = siguiente_punto.get("hora", "--:--:--")
-                                                
-                                                ui_queue.put({
-                                                    "type": "punto",
-                                                    "punto": siguiente_nombre
-                                                })
-
-                                                ui_queue.put({
-                                                    "type": "hora_pc",
-                                                    "hora_pc": siguiente_hora
-                                                })
-                                               
+                                                send_to_nextion(siguiente_nombre, "g0")
+                                                send_to_nextion(siguiente_hora, "t5")
 
                                         mensaje_mqtt = {
                                             "BusID": CLIENT_ID,
@@ -398,6 +308,9 @@ def iniciar_gps_display():
 
                                         puntos_notificados.add(name)
                                     break
+                                else:
+                                    if name in puntos_notificados:
+                                        puntos_notificados.remove(name)
 
                         else:
                             with gps_lock:
