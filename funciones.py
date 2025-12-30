@@ -3,7 +3,6 @@ import json
 from datetime import datetime, timedelta
 from math import radians, sin, cos, sqrt, atan2
 from db import cargar_desde_sqlite 
-from ComandosNextion import send_to_nextion,send_to_nextionPlay,nextion,last_sent_texts
 from ui_bus import ui_queue
 
 

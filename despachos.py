@@ -2,7 +2,6 @@ import requests
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-from ComandosNextion import send_to_nextion
 from db import guardar_en_sqlite, cargar_desde_sqlite
 import time
 
@@ -33,8 +32,8 @@ def obtener_datos_itinerario():
     if codigo_local and itinerarios_locales:
         print(f"✅ Usando datos locales desde SQLite (fecha {fecha_actual})")
         limpiar_pantalla()
-        send_to_nextion(fecha_actual, "t7")
-        send_to_nextion(codigo_local, "t8")
+        #send_to_nextion(fecha_actual, "t7")
+        #send_to_nextion(codigo_local, "t8")
 
         por_pagina = 15
         for i, itinerario in enumerate(itinerarios_locales):
@@ -53,13 +52,13 @@ def obtener_datos_itinerario():
             hora_fin = ':'.join(hora_fin.split(':')[0:2]) if hora_fin else ""
 
             if recorrido:
-                send_to_nextion(recorrido, f"t{idx_recorrido}")
+                #send_to_nextion(recorrido, f"t{idx_recorrido}")
                 time.sleep(0.1)
             if hora_despacho:
-                send_to_nextion(hora_despacho, f"t{idx_despacho}")
+                #send_to_nextion(hora_despacho, f"t{idx_despacho}")
                 time.sleep(0.1)
             if hora_fin:
-                send_to_nextion(hora_fin, f"t{idx_fin}")
+                #send_to_nextion(hora_fin, f"t{idx_fin}")
                 time.sleep(0.1)
         return  # ✅ Salimos porque ya usamos datos locales válidos
 
@@ -102,8 +101,8 @@ def obtener_datos_itinerario():
 
     # 🧭 Enviar los datos obtenidos del servidor
     limpiar_pantalla()
-    send_to_nextion(fecha_actual, "t7")
-    send_to_nextion(codigo_servidor, "t8")
+    #send_to_nextion(fecha_actual, "t7")
+    #send_to_nextion(codigo_servidor, "t8")
 
     por_pagina = 15
     for i, itinerario in enumerate(itinerarios_servidor):
@@ -122,13 +121,13 @@ def obtener_datos_itinerario():
         hora_fin = ':'.join(hora_fin.split(':')[0:2]) if hora_fin else ""
 
         if recorrido:
-            send_to_nextion(recorrido, f"t{idx_recorrido}")
+            #send_to_nextion(recorrido, f"t{idx_recorrido}")
             time.sleep(0.1)
         if hora_despacho:
-            send_to_nextion(hora_despacho, f"t{idx_despacho}")
+            #send_to_nextion(hora_despacho, f"t{idx_despacho}")
             time.sleep(0.1)
         if hora_fin:
-            send_to_nextion(hora_fin, f"t{idx_fin}")
+            #send_to_nextion(hora_fin, f"t{idx_fin}")
             time.sleep(0.1)
 
 def escuchar_itinerario(evento_itinerario):
@@ -142,14 +141,14 @@ def escuchar_itinerario(evento_itinerario):
 def limpiar_pantalla():
     # Primera página t9..t53
     for i in range(9, 54):
-        send_to_nextion("", f"t{i}")
+        #send_to_nextion("", f"t{i}")
         time.sleep(0.02)
     # Segunda página t54..t98
     for i in range(54, 99):
-        send_to_nextion("", f"t{i}")
+        #send_to_nextion("", f"t{i}")
         time.sleep(0.02)
     # Limpiar cabecera (fecha y código)
-    send_to_nextion("", "t7")
+    #send_to_nextion("", "t7")
     time.sleep(0.02)
-    send_to_nextion("", "t8")
+    #send_to_nextion("", "t8")
     time.sleep(0.02)

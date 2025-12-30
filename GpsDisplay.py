@@ -1,14 +1,12 @@
 import socket
 import time
 import os
+import json
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 from ui_bus import ui_queue
-
-import json
-from ComandosNextion import  send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
 from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual, obtener_chainpc_por_itinerario
 from mqtt_auth import (
@@ -52,7 +50,7 @@ def actualizar_hora_local():
 
         ui_queue.put({
         "type": "hora",
-        "hora": f"🕒 {hora_local.strftime('%H:%M:%S')}🟡"
+        "hora": f"🕒 {hora_local.strftime('%H:%M:%S')}"
         })
 
         ui_queue.put({
@@ -158,7 +156,6 @@ def iniciar_gps_display():
             print("✅ Conectado a AWS IoT Core")
             obtener_datos_itinerario()
             reenviar_pendientes(mqtt_connection, TOPIC)
-            last_sent_texts.clear()
             break
         except Exception as e:
             print(f"❌ Error de conexión: {e}")
@@ -344,7 +341,7 @@ def iniciar_gps_display():
                                 if distancia <= radius:
                                     if name not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, Reproduciendo...")
-                                        send_to_nextionPlay(0, int(numero) - 1)
+                                        #send_to_nextionPlay(0, int(numero) - 1)
 
                                         index_actual = next((i for i, p in enumerate(puntos) if p.get("numero") == numero), None)
                                         if index_actual is not None:
@@ -405,7 +402,6 @@ def iniciar_gps_display():
 
     except KeyboardInterrupt:
         print("\nCerrando servidor y conexión con Nextion")
-        nextion.close()
 
 
 

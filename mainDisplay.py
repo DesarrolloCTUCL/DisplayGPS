@@ -2,7 +2,6 @@ import threading
 import time
 import tkinter as tk
 
-from ComandosNextion import leer_serial
 from despachos import escuchar_itinerario
 from GpsDisplay import iniciar_gps_display
 from TestGui import TestGUI   # 👈 tu interfaz Tkinter
@@ -17,11 +16,7 @@ def main():
     evento_itinerario = threading.Event()
 
     # ===== Threads de lógica =====
-    hilo_serial = threading.Thread(
-        target=leer_serial,
-        args=(evento_itinerario,),
-        daemon=True
-    )
+
 
     hilo_itinerario = threading.Thread(
         target=escuchar_itinerario,
@@ -34,7 +29,6 @@ def main():
         daemon=True
     )
 
-    hilo_serial.start()
     hilo_itinerario.start()
     hilo_gps.start()
 
