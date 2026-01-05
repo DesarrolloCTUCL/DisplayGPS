@@ -308,9 +308,6 @@ def iniciar_gps_display():
 
                                         puntos_notificados.add(name)
                                     break
-                                else:
-                                    if name in puntos_notificados:
-                                        puntos_notificados.remove(name)
 
                         else:
                             with gps_lock:
