@@ -1,12 +1,26 @@
-from gtts import gTTS
-import os
+import subprocess
 
-tts = gTTS(
-    text="Punto de control parque bolivar 07:50 am, proximo punto de control 8am",
-    lang="es",
-    slow=False
+TEXTO = (
+    "Punto de control, Parque Bolivar. "
+    "Siguiente punto de control, 9 y 13"
 )
-tts.save("inicio.mp3")
 
-# Volumen digital máximo permitido por mpg123
-os.system("mpg123 -f 49152 inicio.mp3")
+piper = subprocess.Popen(
+    [
+        "/home/admin/piper/piper/piper",
+        "--model",
+        "/home/admin/piper/voices/es_MX-claude-high.onnx",
+        "--output_file", "-"
+    ],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE
+)
+
+audio, _ = piper.communicate(TEXTO.encode("utf-8"))
+
+aplay = subprocess.Popen(
+    ["aplay", "-f", "S16_LE", "-r", "22050"],
+    stdin=subprocess.PIPE
+)
+
+aplay.communicate(audio)
