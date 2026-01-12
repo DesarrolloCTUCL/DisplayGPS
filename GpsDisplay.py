@@ -266,6 +266,15 @@ def iniciar_gps_display():
 
                                 if numero is None:
                                     continue
+                                distancia_proximo = calcular_distancia(
+                                    parsed_data['latitud'],
+                                    parsed_data['longitud'],
+                                    lat,
+                                    lon
+                                )
+
+                                print(f"📏 Distancia al próximo punto ({name}): {distancia_proximo:.1f} metros")
+                                break  # SOLO el próximo punto
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
                                 if distancia <= radius:
