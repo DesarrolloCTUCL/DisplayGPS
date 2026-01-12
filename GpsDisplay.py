@@ -38,6 +38,21 @@ TOPIC = f"buses/gps/{BUS_ID}"
 gps_activo = False
 gps_lock = threading.Lock()
 fecha_ultima_actualizacion = datetime.now().date()  # ← Inicialización
+espera_lock = threading.Lock()
+esperando_ruta = False  # ← AÑADIR ESTO
+ruta_anterior = None
+
+def hilo_espera_proxima_ruta():
+    global esperando_ruta, ruta_anterior
+
+    while True:
+        with espera_lock:
+            activo = esperando_ruta
+
+        if activo:
+            manejar_espera_proxima_ruta(ruta_anterior)
+
+        time.sleep(30)  # 🔁 actualiza cada 30 segundos
 
 
 def actualizar_hora_local():
@@ -56,13 +71,14 @@ def actualizar_hora_local():
 
 def iniciar_gps_display():
     global fecha_ultima_actualizacion
+    global esperando_ruta
+    global ruta_anterior
     threading.Thread(target=actualizar_hora_local, daemon=True).start()
+    threading.Thread(target=hilo_espera_proxima_ruta, daemon=True).start()
 
     # Conexión a AWS IoT con reintentos
     ruta_iniciada = False
-    ruta_anterior = None
     ruta_activa_id = None
-    esperando_ruta = False
     ruta_finalizada = False
     ruta_notificada = False 
     ultimo_index_punto = -1
@@ -143,7 +159,7 @@ def iniciar_gps_display():
                                 hora_fin_dt = datetime.strptime(data_itin["hora_fin"], "%H:%M:%S")
 
                                 margen_inicio = timedelta(minutes=2)  #Parametro de configuracion
-                                margen_final = timedelta(minutes=6)  #Parametro de configuracion
+                                margen_final = timedelta(minutes=4)  #Parametro de configuracion
                                 hora_despacho_margen = hora_despacho_dt - margen_inicio
                                 hora_fin_margen = hora_fin_dt + margen_final
 

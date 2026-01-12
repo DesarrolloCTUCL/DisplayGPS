@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from math import radians, sin, cos, sqrt, atan2
 from db import cargar_desde_sqlite 
 from ComandosNextion import send_to_nextion,send_to_nextionPlay,nextion,last_sent_texts
+from datetime import datetime, date, timedelta
 
 # Función para calcular distancia entre dos coordenadas (Haversine)
 def calcular_distancia(lat1, lon1, lat2, lon2):
@@ -151,7 +152,7 @@ def obtener_chainpc_por_itinerario():
     return itinerarios
 
 
-from datetime import datetime, date, timedelta
+
 
 def manejar_espera_proxima_ruta(ruta_anterior=None):
     print("⏸ Esperando el inicio de la próxima ruta")
