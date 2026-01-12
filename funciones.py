@@ -151,41 +151,69 @@ def obtener_chainpc_por_itinerario():
     return itinerarios
 
 
-def manejar_espera_proxima_ruta(ruta_anterior):
+from datetime import datetime, date, timedelta
+
+def manejar_espera_proxima_ruta(ruta_anterior=None):
     print("⏸ Esperando el inicio de la próxima ruta")
 
-    # Obtener turnos disponibles
     turnos = obtener_chainpc_por_itinerario()
     ids_ordenados = sorted(turnos.keys(), key=lambda x: int(x))
-    print(f"🧩 Turnos disponibles: {ids_ordenados}")
-    print(f"🧠 Ruta anterior: {ruta_anterior}")
 
-    # Determinar la siguiente ruta
-    if ruta_anterior is None:
-        # Si no hay ruta anterior, tomar la primera del día
-        siguiente_id = ids_ordenados[0] if ids_ordenados else None
-    else:
+    ahora_dt = datetime.now()
+    ahora = ahora_dt.time()
+
+    print(f"🕒 Hora actual Raspberry: {ahora}")
+
+    siguiente_id = None
+    hora_inicio_dt = None
+
+    for turno_id in ids_ordenados:
+        turno = turnos[turno_id]
+
         try:
-            indice_actual = ids_ordenados.index(ruta_anterior)
-            if indice_actual + 1 < len(ids_ordenados):
-                siguiente_id = ids_ordenados[indice_actual + 1]
-            else:
-                siguiente_id = None
-        except ValueError:
-            siguiente_id = ids_ordenados[0] if ids_ordenados else None
+            hora_inicio = datetime.strptime(turno["hora_despacho"], "%H:%M:%S").time()
+            hora_fin = datetime.strptime(turno["hora_fin"], "%H:%M:%S").time()
+        except Exception as e:
+            print(f"⚠️ Error en formato de hora turno {turno_id}: {e}")
+            continue
 
-    # Preparar mensaje para Nextion
+        # 🛑 SI ESTÁ DENTRO DEL TURNO → NO HACER NADA
+        if hora_inicio <= ahora <= hora_fin:
+            print(f"🟢 Turno en curso ({hora_inicio} - {hora_fin}). No se ejecuta espera.")
+            return
+
+        # 🟡 PRÓXIMO TURNO
+        if ahora < hora_inicio:
+            siguiente_id = turno_id
+            hora_inicio_dt = datetime.combine(date.today(), hora_inicio)
+            break
+
+    # 🧾 SOLO SI NO ESTAMOS EN TURNO
     if siguiente_id:
-        siguiente_ruta = turnos[siguiente_id]
-        prox_nombre = siguiente_ruta.get("recorrido", "Ruta siguiente")
-        prox_inicio = siguiente_ruta.get("hora_despacho", "--:--:--")
-        prox_fin = siguiente_ruta.get("hora_fin", "--:--:--")
+        ruta = turnos[siguiente_id]
+        prox_nombre = ruta.get("recorrido", "Ruta")
+        prox_inicio = ruta.get("hora_despacho", "--:--:--")
+        prox_fin = ruta.get("hora_fin", "--:--:--")
 
-        print(f"Proxima ruta: {prox_inicio}")               
-        send_to_nextion(f"{prox_inicio}", "t3")
-        send_to_nextion(f"{prox_fin}", "t4")
+        # ⏱️ TIEMPO RESTANTE
+        delta = hora_inicio_dt - ahora_dt
+        minutos_totales = int(delta.total_seconds() // 60)
+
+        if minutos_totales < 60:
+            tiempo_txt = f"{minutos_totales} min"
+        else:
+            horas = minutos_totales // 60
+            minutos = minutos_totales % 60
+            tiempo_txt = f"{horas} h {minutos} min"
+
+        send_to_nextion(prox_inicio, "t3")
+        send_to_nextion(prox_fin, "t4")
         send_to_nextion(f"Proxima ruta: {prox_inicio}", "g0")
-        send_to_nextion(f"{prox_nombre}", "t6")
+        send_to_nextion(prox_nombre, "t6")
+        send_to_nextion(f"Faltan {tiempo_txt}", "t7")  # ← NUEVO CAMPO
+
+        print(f"➡️ Próxima ruta: {prox_inicio} | Faltan {tiempo_txt}")
+
     else:
         print("✅ No hay más rutas programadas para hoy.")
         send_to_nextion("FIN DE ITINERARIOS", "t6")

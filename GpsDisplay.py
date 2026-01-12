@@ -252,7 +252,7 @@ def iniciar_gps_display():
                                         print(f"Punto de control alcanzado: {name}, Reproduciendo...")
                                         send_to_nextionPlay(0, int(numero) - 1)
 
-                                        # 🔒 Bloqueo inmediato para evitar doble disparo
+                                        # 🔒 Marcar DEFINITIVO (no depende de MQTT)
                                         puntos_notificados.add(name)
 
                                         index_actual = next(
@@ -262,24 +262,18 @@ def iniciar_gps_display():
 
                                         if index_actual is not None:
                                             ultimo_index_punto = index_actual
-
                                             if index_actual + 1 >= len(puntos):
                                                 send_to_nextion("FIN", "g0")
                                                 send_to_nextion("--:--:--", "t5")
-                                                print(
-                                                    f"✅ Último punto de control marcado. "
-                                                    f"Ruta FINALIZADA: {nombre_recorrido} | "
-                                                    f"Inicio: {hora_inicio} | Fin: {hora_fin} (ID: {ruta_activa_id})"
-                                                )
                                                 ruta_iniciada = False
                                                 esperando_ruta = False
                                                 ruta_finalizada = True
                                                 ruta_anterior = ruta_activa_id
                                                 puntos_notificados.clear()
                                             else:
-                                                siguiente_punto = puntos[index_actual + 1]
-                                                send_to_nextion(siguiente_punto.get("name", "Siguiente"), "g0")
-                                                send_to_nextion(siguiente_punto.get("hora", "--:--:--"), "t5")
+                                                siguiente = puntos[index_actual + 1]
+                                                send_to_nextion(siguiente.get("name"), "g0")
+                                                send_to_nextion(siguiente.get("hora"), "t5")
 
                                         mensaje_mqtt = {
                                             "BusID": CLIENT_ID,
@@ -292,14 +286,11 @@ def iniciar_gps_display():
                                             "velocidad_kmh": parsed_data["velocidad_kmh"]
                                         }
 
-                                        # 📡 Publicar UNA sola vez
-                                        publicado = publicar_mensaje(mqtt_connection, TOPIC, mensaje_mqtt)
-
-                                        if not publicado:
-                                            # ❌ Si falló, revertimos el bloqueo
-                                            puntos_notificados.discard(name)
+                                        # 📡 Publicar (si falla, queda pendiente)
+                                        publicar_mensaje(mqtt_connection, TOPIC, mensaje_mqtt)
 
                                     break
+
                         else:
                             with gps_lock:
                                 gps_activo = False
