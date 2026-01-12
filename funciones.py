@@ -208,9 +208,13 @@ def manejar_espera_proxima_ruta(ruta_anterior=None):
 
         send_to_nextion(prox_inicio, "t3")
         send_to_nextion(prox_fin, "t4")
-        send_to_nextion(f"Proxima ruta: {prox_inicio}", "g0")
-        send_to_nextion(prox_nombre, "t6")
-        send_to_nextion(f"Faltan {tiempo_txt}", "t7")  # ← NUEVO CAMPO
+
+        # g0: hora inicio + nombre de la ruta
+        send_to_nextion(f"{prox_inicio} - {prox_nombre}", "g0")
+
+        # t6: tiempo restante
+        send_to_nextion(f"Faltan {tiempo_txt}", "t6")
+
 
         print(f"➡️ Próxima ruta: {prox_inicio} | Faltan {tiempo_txt}")
 
