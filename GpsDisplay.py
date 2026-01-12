@@ -1,14 +1,16 @@
 import socket
 import time
 import os
+import threading
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from awscrt import io, mqtt, auth, http
 from awsiot import mqtt_connection_builder
 import json
+from pathlib import Path
 from ComandosNextion import send_to_nextion, send_to_nextionPlay, nextion, last_sent_texts
 from despachos import obtener_datos_itinerario
-from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual, obtener_chainpc_por_itinerario
+from funciones import calcular_distancia, parse_gprmc, verificar_itinerario_actual, obtener_chainpc_por_itinerario,manejar_espera_proxima_ruta
 from mqtt_auth import (
     crear_conexion_mqtt,
     guardar_pendiente,
@@ -16,7 +18,6 @@ from mqtt_auth import (
     publicar_mensaje
 )
 
-import threading
 
 # Cargar variables de entorno
 load_dotenv()
@@ -39,11 +40,6 @@ gps_lock = threading.Lock()
 fecha_ultima_actualizacion = datetime.now().date()  # ← Inicialización
 
 
-import json
-from pathlib import Path
-
-
-
 def actualizar_hora_local():
     while True:
         with gps_lock:
@@ -55,44 +51,6 @@ def actualizar_hora_local():
         verificar_itinerario_actual(hora_local.strftime("%d/%m/%Y"), hora_local.strftime("%H:%M:%S"))
         time.sleep(1)
 
-def manejar_espera_proxima_ruta(ruta_anterior):
-    print("⏸ Esperando el inicio de la próxima ruta")
-
-    # Obtener turnos disponibles
-    turnos = obtener_chainpc_por_itinerario()
-    ids_ordenados = sorted(turnos.keys(), key=lambda x: int(x))
-    print(f"🧩 Turnos disponibles: {ids_ordenados}")
-    print(f"🧠 Ruta anterior: {ruta_anterior}")
-
-    # Determinar la siguiente ruta
-    if ruta_anterior is None:
-        # Si no hay ruta anterior, tomar la primera del día
-        siguiente_id = ids_ordenados[0] if ids_ordenados else None
-    else:
-        try:
-            indice_actual = ids_ordenados.index(ruta_anterior)
-            if indice_actual + 1 < len(ids_ordenados):
-                siguiente_id = ids_ordenados[indice_actual + 1]
-            else:
-                siguiente_id = None
-        except ValueError:
-            siguiente_id = ids_ordenados[0] if ids_ordenados else None
-
-    # Preparar mensaje para Nextion
-    if siguiente_id:
-        siguiente_ruta = turnos[siguiente_id]
-        prox_nombre = siguiente_ruta.get("recorrido", "Ruta siguiente")
-        prox_inicio = siguiente_ruta.get("hora_despacho", "--:--:--")
-        prox_fin = siguiente_ruta.get("hora_fin", "--:--:--")
-
-        print(f"Proxima ruta: {prox_inicio}")               
-        send_to_nextion(f"{prox_inicio}", "t3")
-        send_to_nextion(f"{prox_fin}", "t4")
-        send_to_nextion(f"Proxima ruta: {prox_inicio}", "g0")
-        send_to_nextion(f"{prox_nombre}", "t6")
-    else:
-        print("✅ No hay más rutas programadas para hoy.")
-        send_to_nextion("FIN DE ITINERARIOS", "t6")
 
 
 
@@ -185,7 +143,7 @@ def iniciar_gps_display():
                                 hora_fin_dt = datetime.strptime(data_itin["hora_fin"], "%H:%M:%S")
 
                                 margen_inicio = timedelta(minutes=2)  #Parametro de configuracion
-                                margen_final = timedelta(minutes=8)  #Parametro de configuracion
+                                margen_final = timedelta(minutes=6)  #Parametro de configuracion
                                 hora_despacho_margen = hora_despacho_dt - margen_inicio
                                 hora_fin_margen = hora_fin_dt + margen_final
 

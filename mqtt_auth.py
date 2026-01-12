@@ -94,21 +94,20 @@ def reenviar_pendientes(mqtt_connection, topic):
 
 
 def publicar_mensaje(mqtt_connection, topic, mensaje):
-    """
-    Publica un mensaje en MQTT. 
-    Si hay pendientes, intenta enviarlos primero.
-    Si falla, guarda el mensaje actual y los pendientes no enviados.
-    """
-    # Intentar reenviar pendientes primero
     reenviar_pendientes(mqtt_connection, topic)
 
     try:
-        mqtt_connection.publish(
+        future, packet_id = mqtt_connection.publish(
             topic=topic,
             payload=json.dumps(mensaje),
             qos=mqtt.QoS.AT_LEAST_ONCE
         )
-        print(f"📡 Publicado a MQTT: {mensaje}")
+
+        # ⏳ ESPERAR confirmación REAL
+        future.result(timeout=5)
+
+        print(f"📡 Publicado CONFIRMADO MQTT: {mensaje}")
+
     except Exception as e:
-        print(f"⚠️ Error al publicar MQTT: {e}")
+        print(f"⚠️ Error REAL al publicar MQTT: {e}")
         guardar_pendiente(mensaje)
