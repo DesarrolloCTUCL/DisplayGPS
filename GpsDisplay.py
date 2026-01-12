@@ -107,6 +107,7 @@ def iniciar_gps_display():
     esperando_ruta = False
     ruta_finalizada = False
     ruta_notificada = False 
+    ultimo_index_punto = -1
 
     while True:
         try:
@@ -227,6 +228,8 @@ def iniciar_gps_display():
                                         print(f"🟢 Mostrando primer punto de control al iniciar ruta: {nombre}")
                                     ruta_iniciada = True
                                     ruta_anterior = id_itin_activo
+                                    ultimo_index_punto = -1
+
 
                             elif itinerario_activo and ruta_finalizada==True:
                                 if not esperando_ruta:
@@ -256,6 +259,23 @@ def iniciar_gps_display():
 
                             if ruta_finalizada:
                                 continue
+
+                            # 📏 Distancia al siguiente punto REAL según orden
+                            if ultimo_index_punto + 1 < len(puntos):
+                                siguiente_punto = puntos[ultimo_index_punto + 1]
+
+                                dist_proximo = calcular_distancia(
+                                    parsed_data['latitud'],
+                                    parsed_data['longitud'],
+                                    siguiente_punto.get("lat"),
+                                    siguiente_punto.get("long")
+                                )
+
+                                print(
+                                    f"📏 Distancia al próximo punto ({siguiente_punto.get('name')}): "
+                                    f"{dist_proximo:.1f} m"
+                                )
+
                             # Verificación de puntos de control
                             for punto in puntos:
                                 name = punto.get("name", "Sin nombre")
@@ -266,15 +286,7 @@ def iniciar_gps_display():
 
                                 if numero is None:
                                     continue
-                                distancia_proximo = calcular_distancia(
-                                    parsed_data['latitud'],
-                                    parsed_data['longitud'],
-                                    lat,
-                                    lon
-                                )
-
-                                print(f"📏 Distancia al próximo punto ({name}): {distancia_proximo:.1f} metros")
-                                break  # SOLO el próximo punto
+                                
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
                                 if distancia <= radius:
@@ -285,6 +297,7 @@ def iniciar_gps_display():
                                         index_actual = next((i for i, p in enumerate(puntos) if p.get("numero") == numero), None)
                                         if index_actual is not None:
                                             # Si es el último punto de control
+                                            ultimo_index_punto = index_actual
                                             if index_actual + 1 >= len(puntos):
                                                 send_to_nextion("FIN", "g0")
                                                 send_to_nextion("--:--:--", "t5")
