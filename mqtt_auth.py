@@ -4,6 +4,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from awscrt import io, mqtt
 from awsiot import mqtt_connection_builder
+import threading
+mqtt_lock = threading.Lock()
 
 # Cargar variables de entorno
 load_dotenv()
@@ -71,43 +73,51 @@ def guardar_pendiente(mensaje):
         print(f"⚠️ No se pudo guardar pendiente: {e}")
 
 def reenviar_pendientes(mqtt_connection, topic):
-    """Reenvía los mensajes pendientes al reconectarse al broker MQTT."""
     pendientes = cargar_pendientes()
     if not pendientes:
         return
-    enviados = []
+
+    enviados_ok = []
+
     for msg in pendientes:
         try:
-            mqtt_connection.publish(
+            future, _ = mqtt_connection.publish(
                 topic=topic,
                 payload=json.dumps(msg),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
-            print(f"📤 Reenviado mensaje pendiente: {msg}")
-            enviados.append(msg)
-        except Exception as e:
-            print(f"⚠️ No se pudo reenviar: {e}")
 
-    restantes = [m for m in pendientes if m not in enviados]
+            future.result(timeout=10)
+            print(f"📤 Reenviado CONFIRMADO: {msg}")
+            enviados_ok.append(msg)
+
+        except Exception as e:
+            print("⚠️ Error reenviando pendiente")
+            print(f"   Tipo: {type(e)}")
+            print(f"   Detalle: {repr(e)}")
+            break  # NO sigas, la conexión está inestable
+
+    restantes = [m for m in pendientes if m not in enviados_ok]
     with open(PENDIENTES_FILE, "w") as f:
         json.dump(restantes, f, indent=2)
 
 
+
 def publicar_mensaje(mqtt_connection, topic, mensaje):
-    reenviar_pendientes(mqtt_connection, topic)
-
-    try:
-        future, packet_id = mqtt_connection.publish(
-            topic=topic,
-            payload=json.dumps(mensaje),
-            qos=mqtt.QoS.AT_LEAST_ONCE
-        )
-
-        # ⏳ ESPERAR confirmación REAL
-        future.result(timeout=5)
-
-        print(f"📡 Publicado CONFIRMADO MQTT: {mensaje}")
-
-    except Exception as e:
-        print(f"⚠️ Error REAL al publicar MQTT: {e}")
-        guardar_pendiente(mensaje)
+    with mqtt_lock:
+        reenviar_pendientes(mqtt_connection, topic)
+        try:
+            future, _ = mqtt_connection.publish(
+                topic=topic,
+                payload=json.dumps(mensaje),
+                qos=mqtt.QoS.AT_LEAST_ONCE
+            )
+            future.result(timeout=10)
+            print(f"📡 Publicado CONFIRMADO MQTT: {mensaje}")
+            return True
+        except Exception as e:
+            print("⚠️ Error REAL al publicar MQTT")
+            print(f"   Tipo: {type(e)}")
+            print(f"   Detalle: {repr(e)}")
+            guardar_pendiente(mensaje)
+            return False
