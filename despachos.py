@@ -11,19 +11,8 @@ load_dotenv()
 BUS_ID = int(os.getenv("BUS_ID"))
 BUS_BD = int(os.getenv("BUS_DB"))
 
-def itinerarios_diferentes(locales, servidor):
-    if len(locales) != len(servidor):
-        return True
-    for i in range(len(servidor)):
-        loc = locales[i] if i < len(locales) else {}
-        serv = servidor[i]
-        if (
-            loc.get("recorrido", "").strip() != serv.get("recorrido", "").strip() or
-            loc.get("hora_despacho", "").strip() != serv.get("hora_despacho", "").strip() or
-            loc.get("hora_fin", "").strip() != serv.get("hora_fin", "").strip()
-        ):
-            return True
-    return False
+
+
 def obtener_datos_itinerario():
     fecha_actual = datetime.now().strftime("%Y-%m-%d")
 
@@ -69,8 +58,8 @@ def obtener_datos_itinerario():
     itinerarios_servidor = None
 
     tiempo_inicio = time.time()
-    tiempo_limite = 60 * 60  # 1 hora
-
+    tiempo_limite = 5 * 60  # 1 hora
+    hubo_404 = False  # ← bandera
     while True:
         try:
             print(f"🌐 Consultando al servidor con fecha: {fecha_actual}...")
@@ -85,18 +74,31 @@ def obtener_datos_itinerario():
                 if codigo_servidor and itinerarios_servidor:
                     print("🆕 Datos obtenidos del servidor. Guardando en SQLite...")
                     guardar_en_sqlite(fecha_actual, codigo_servidor, itinerarios_servidor)
-                    break
-                else:
-                    print("⚠️ El servidor respondió sin datos válidos. Reintentando en 5 s...")
+                    break  # ✅ ÉXITO
+
+            elif response.status_code == 404:
+                print("📭 Aún no hay itinerarios (404). Reintentando...")
+                hubo_404 = True  # ← marcamos que ocurrió
+                # ❌ NO limpiar aquí
+
             else:
-                print(f"❌ Error HTTP {response.status_code}. Reintentando en 5 s...")
+                print(f"❌ Error HTTP {response.status_code}. Reintentando...")
 
         except Exception as e:
-            print(f"❌ Error de conexión: {e}. Reintentando en 5 s...")
+            print(f"❌ Error de conexión: {e}. Reintentando...")
 
+        # ⏰ Tiempo agotado
         if time.time() - tiempo_inicio >= tiempo_limite:
-            print("⏰ Se alcanzó el tiempo máximo de 1 hora sin obtener datos. Abortando reintentos.")
-            return
+            print("⏰ Se alcanzó el tiempo máximo de 5 minutos.")
+
+            if hubo_404:
+                print("🧹 No hubo despacho tras 5 minutos. Limpiando SQLite y memoria.")
+                guardar_en_sqlite(fecha_actual, "", [])
+                limpiar_pantalla()
+                send_to_nextion(fecha_actual, "t7")
+                send_to_nextion("SIN DESPACHO", "t8")
+
+            return  # ⛔ salida definitiva
 
         time.sleep(5)
 

@@ -151,6 +151,12 @@ def iniciar_gps_display():
                             hora_actual_dt = datetime.strptime(parsed_data['hora'], "%H:%M:%S")
 
                             turnos = obtener_chainpc_por_itinerario()
+                            if not turnos:
+                                esperando_ruta = False
+                                ruta_activa_id = None
+                                ruta_iniciada = False
+                                continue
+
                             itinerario_activo = None
                             id_itin_activo = None
 
@@ -268,8 +274,13 @@ def iniciar_gps_display():
                                         print(f"Punto de control alcanzado: {name}, Reproduciendo...")
                                         send_to_nextionPlay(0, int(numero) - 1)
 
-                                        # 🔒 Marcar DEFINITIVO (no depende de MQTT)
-                                        puntos_notificados.add(name)
+                                        enviado = publicar_mensaje(mqtt_connection, TOPIC, mensaje_mqtt)
+
+                                        if enviado:
+                                            puntos_notificados.add(name)
+                                        else:
+                                            print(f"⏳ Punto {name} NO confirmado, se intentará luego")
+
 
                                         index_actual = next(
                                             (i for i, p in enumerate(puntos) if p.get("numero") == numero),

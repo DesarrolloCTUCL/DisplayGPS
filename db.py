@@ -1,6 +1,4 @@
-
 import sqlite3
-
 import json
 
 def guardar_en_sqlite(fecha, itinerario_codigo, itinerarios):
@@ -50,7 +48,6 @@ def guardar_en_sqlite(fecha, itinerario_codigo, itinerarios):
         conn.commit()
 
 
-
 def cargar_desde_sqlite(fecha):
     import json
     conn = sqlite3.connect('itinerarios.db')
@@ -96,18 +93,3 @@ def cargar_desde_sqlite(fecha):
         })
     return codigo_itinerario, itinerarios
 
-
-def itinerarios_diferentes(locales, servidor):
-    if len(locales) != len(servidor):
-        return True
-    for i in range(len(servidor)):
-        loc = locales[i] if i < len(locales) else {}
-        serv = servidor[i]
-
-        if (
-            loc.get("recorrido", "").strip() != serv.get("recorrido", "").strip() or
-            loc.get("hora_despacho", "").strip() != serv.get("hora_despacho", "").strip() or
-            loc.get("hora_fin", "").strip() != serv.get("hora_fin", "").strip()
-        ):
-            return True
-    return False
