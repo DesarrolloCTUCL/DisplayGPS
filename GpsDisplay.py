@@ -270,18 +270,31 @@ def iniciar_gps_display():
 
                                 distancia = calcular_distancia(parsed_data['latitud'], parsed_data['longitud'], lat, lon)
                                 if distancia <= radius:
-                                    if name not in puntos_notificados:
+                                    if numero not in puntos_notificados:
                                         print(f"Punto de control alcanzado: {name}, Reproduciendo...")
                                         send_to_nextionPlay(0, int(numero) - 1)
 
+                                        # 🧾 Construir mensaje ANTES de enviarlo
+                                        mensaje_mqtt = {
+                                            "BusID": CLIENT_ID,
+                                            "datetime": f"{parsed_data['fecha']} {parsed_data['hora']}",
+                                            "punto_control_id": numero,
+                                            "punto_controlname": name,
+                                            "shift_id": shift_id,
+                                            "latitud": parsed_data["latitud"],
+                                            "longitud": parsed_data["longitud"],
+                                            "velocidad_kmh": parsed_data["velocidad_kmh"]
+                                        }
+
+                                        # 📡 Publicar (espera confirmación real)
                                         enviado = publicar_mensaje(mqtt_connection, TOPIC, mensaje_mqtt)
 
                                         if enviado:
-                                            puntos_notificados.add(name)
+                                            puntos_notificados.add(numero)  # 👈 usar numero, no name
                                         else:
                                             print(f"⏳ Punto {name} NO confirmado, se intentará luego")
 
-
+                                        # 🔄 Actualizar índice y UI
                                         index_actual = next(
                                             (i for i, p in enumerate(puntos) if p.get("numero") == numero),
                                             None
@@ -301,20 +314,6 @@ def iniciar_gps_display():
                                                 siguiente = puntos[index_actual + 1]
                                                 send_to_nextion(siguiente.get("name"), "g0")
                                                 send_to_nextion(siguiente.get("hora"), "t5")
-
-                                        mensaje_mqtt = {
-                                            "BusID": CLIENT_ID,
-                                            "datetime": f"{parsed_data['fecha']} {parsed_data['hora']}",
-                                            "punto_control_id": numero,
-                                            "punto_controlname": name,
-                                            "shift_id": shift_id,
-                                            "latitud": parsed_data["latitud"],
-                                            "longitud": parsed_data["longitud"],
-                                            "velocidad_kmh": parsed_data["velocidad_kmh"]
-                                        }
-
-                                        # 📡 Publicar (si falla, queda pendiente)
-                                        publicar_mensaje(mqtt_connection, TOPIC, mensaje_mqtt)
 
                                     break
 
