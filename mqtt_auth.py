@@ -105,20 +105,17 @@ def reenviar_pendientes(mqtt_connection, topic):
 def publicar_mensaje(mqtt_connection, topic, mensaje):
     with mqtt_lock:
         try:
-            future, packet_id = mqtt_connection.publish(
+            mqtt_connection.publish(
                 topic=topic,
                 payload=json.dumps(mensaje),
                 qos=mqtt.QoS.AT_LEAST_ONCE
             )
 
-            # ⏳ Esperar confirmación REAL
-            future.result(timeout=5)
-
-            print(f"📤 MQTT enviado: {mensaje}")
+            print(f"📤 MQTT enviado (sin esperar ACK): {mensaje}")
             return True
 
         except Exception as e:
-            print("⚠️ MQTT NO ENVIADO, guardando pendiente")
+            print("⚠️ ERROR real al publicar MQTT")
             print(f"   Tipo: {type(e)}")
             print(f"   Detalle: {e}")
 
